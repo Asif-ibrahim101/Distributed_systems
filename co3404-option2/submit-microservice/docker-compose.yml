@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # RabbitMQ message broker — receives submitted jokes from submit app
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672" # AMQP protocol
+      - "15672:15672" # Management console UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    volumes:
+      # Persistent storage so queued messages survive restarts
+      - rmq-data:/var/lib/rabbitmq
+    networks:
+      - submit-network
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Submit app — publishes jokes to RabbitMQ, fetches types from joke service
+  submit:
+    build: ./submit-app
+    container_name: submit-app
+    ports:
+      - "4200:3200"
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+      JOKE_SERVICE_URL: http://${VM1_PRIVATE_IP}:4000
+    volumes:
+      # Persistent cache for types so /types works even if joke service is down
+      - types-cache:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - submit-network
+    restart: unless-stopped
+
+# Named volumes for persistence
+volumes:
+  rmq-data:
+  types-cache:
+
+    # Private bridge network for container-to-container communication
+networks:
+  submit-network:
+    driver: bridge

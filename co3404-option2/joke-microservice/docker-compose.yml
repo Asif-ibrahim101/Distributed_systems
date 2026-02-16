@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # MySQL database — shared by joke app and ETL
+  database:
+    image: mysql:8.0
+    container_name: joke-database
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "4002:3306"
+    volumes:
+      # Persistent storage so data survives restarts
+      - db-data:/var/lib/mysql
+      # Run init.sql on first startup
+      - ./db-init:/docker-entrypoint-initdb.d
+    networks:
+      - joke-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Joke retrieval app — serves random jokes (UNCHANGED from Option 1)
+  joke:
+    build: ./joke-app
+    container_name: joke-app
+    ports:
+      - "4000:3000"
+    environment:
+      DB_HOST: database
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - joke-network
+    restart: unless-stopped
+
+  # ETL service — consumes jokes from RabbitMQ queue and writes to DB
+  etl:
+    build: ./etl
+    container_name: etl-app
+    ports:
+      - "4001:3001"
+    environment:
+      DB_HOST: database
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${VM2_PRIVATE_IP}:5672
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - joke-network
+    restart: unless-stopped
+
+# Named volume for persistent DB storage
+volumes:
+  db-data:
+
+    # Private bridge network for container-to-container communication
+networks:
+  joke-network:
+    driver: bridge

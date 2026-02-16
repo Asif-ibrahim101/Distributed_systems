@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Submit new jokes to the Joke Service database">
+    <title>Submit a Joke</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>📝 Submit a Joke</h1>
+        <p class="subtitle">Add a new joke to the database!</p>
+
+        <form id="joke-form">
+            <div class="form-group">
+                <label for="setup">Setup:</label>
+                <textarea id="setup" rows="2" placeholder="e.g. Why did the chicken cross the road?"
+                    required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="punchline">Punchline:</label>
+                <textarea id="punchline" rows="2" placeholder="e.g. To get to the other side!" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="type-select">Joke Type:</label>
+                <select id="type-select">
+                    <option value="">-- Select a type --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="new-type-toggle"> Add a new type instead
+                </label>
+                <input type="text" id="new-type-input" class="hidden" placeholder="Enter new joke type">
+            </div>
+
+            <button type="submit" id="submit-btn">Submit Joke</button>
+        </form>
+
+        <div id="feedback" class="feedback hidden"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

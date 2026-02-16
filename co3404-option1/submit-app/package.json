@@ -1,0 +1,16 @@
+{
+    "name": "submit-app",
+    "version": "1.0.0",
+    "description": "Joke submission service — allows users to add new jokes to the shared database",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "mysql2": "^3.6.0",
+        "cors": "^2.8.5",
+        "swagger-jsdoc": "^6.2.8",
+        "swagger-ui-express": "^5.0.0"
+    }
+}

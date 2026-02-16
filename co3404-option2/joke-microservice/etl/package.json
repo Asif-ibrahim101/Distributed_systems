@@ -1,0 +1,13 @@
+{
+    "name": "etl-service",
+    "version": "1.0.0",
+    "description": "ETL service — consumes jokes from RabbitMQ and writes them to MySQL",
+    "main": "etl.js",
+    "scripts": {
+        "start": "node etl.js"
+    },
+    "dependencies": {
+        "amqplib": "^0.10.3",
+        "mysql2": "^3.6.0"
+    }
+}

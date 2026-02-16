@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Joke Service — Get random jokes by category">
+  <title>Joke Service</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🃏 Joke Service</h1>
+    <p class="subtitle">Select a joke type and get a random joke!</p>
+
+    <div class="controls">
+      <label for="type-select">Joke Type:</label>
+      <select id="type-select">
+        <option value="any">Any</option>
+      </select>
+      <button id="get-joke-btn">Get Joke</button>
+    </div>
+
+    <div id="joke-display" class="joke-display hidden">
+      <p id="joke-setup" class="joke-setup"></p>
+      <p id="joke-punchline" class="joke-punchline hidden"></p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment files (contain credentials)
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker volumes (local only)
+db-data/
+rmq-data/
+
+# Temporary files
+*.log
+~$*
