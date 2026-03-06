@@ -142,6 +142,23 @@ app.get('/types', async (req, res) => {
     }
 });
 
+// Alias for Kong routing — Kong forwards /submit-types → /submit-types on this server
+// The frontend uses /submit-types so it works through Kong's reverse proxy
+app.get('/submit-types', async (req, res) => {
+    try {
+        const response = await axios.get(`${JOKE_SERVICE_URL}/types`, {
+            timeout: 5000,
+        });
+        const types = response.data;
+        writeCache(types);
+        res.json(types);
+    } catch (err) {
+        console.error('Failed to fetch types from joke service, using cache:', err.message);
+        const cachedTypes = readCache();
+        res.json(cachedTypes);
+    }
+});
+
 /**
  * @openapi
  * /submit:

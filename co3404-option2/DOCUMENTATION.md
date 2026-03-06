@@ -2,7 +2,7 @@
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [What Changed from Option 1](#what-changed-from-option-1)
+2. [What Changed from Option 1](om#what-changed-from-option-1)
 3. [Architecture Diagram](#architecture-diagram)
 4. [Project Structure](#project-structure)
 5. [How Each Component Works](#how-each-component-works)
@@ -11,8 +11,6 @@
 8. [Environment Variables](#environment-variables)
 9. [Running Locally](#running-locally)
 10. [Azure Deployment](#azure-deployment)
-
----
 
 ## Overview
 

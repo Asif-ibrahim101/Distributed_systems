@@ -11,7 +11,7 @@ const jokePunchline = document.getElementById('joke-punchline');
  */
 async function loadTypes() {
     try {
-        const res = await fetch('/types');
+        const res = await fetch('/joke-types');
         const types = await res.json();
 
         // Preserve whatever the user currently has selected

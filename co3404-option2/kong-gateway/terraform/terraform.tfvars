@@ -1,0 +1,8 @@
+resource_group_name = "co3404-rg"
+location            = "norwayeast"
+vnet_name           = "co3404-vnet"
+subnet_name         = "default"
+vm_name             = "kong-vm"
+vm_size             = "Standard_B2ats_v2"
+admin_username      = "azureuser"
+private_ip          = "10.0.0.6"

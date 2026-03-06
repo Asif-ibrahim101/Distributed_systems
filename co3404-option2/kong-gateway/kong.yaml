@@ -1,0 +1,41 @@
+_format_version: "3.0"
+
+services:
+  # Joke service — routes to VM1
+  - name: joke-service
+    url: http://10.0.0.4:4000
+    routes:
+      - name: joke-route
+        paths:
+          - /joke
+        strip_path: false
+      - name: joke-types-route
+        paths:
+          - /joke-types
+        strip_path: false
+        # /joke-types → http://10.0.0.4:4000/types
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 5
+          policy: local
+          fault_tolerant: true
+          hide_client_headers: false
+
+  # Submit service — routes to VM2
+  - name: submit-service
+    url: http://10.0.0.5:4200
+    routes:
+      - name: submit-route
+        paths:
+          - /submit
+        strip_path: false
+      - name: submit-types-route
+        paths:
+          - /submit-types
+        strip_path: false
+        # /submit-types → http://10.0.0.5:4200/types
+      - name: docs-route
+        paths:
+          - /docs
+        strip_path: false

@@ -12,7 +12,7 @@ const feedback = document.getElementById('feedback');
  */
 async function loadTypes() {
     try {
-        const res = await fetch('/types');
+        const res = await fetch('/submit-types');
         const types = await res.json();
 
         const currentValue = typeSelect.value;

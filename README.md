@@ -11,9 +11,10 @@ A distributed joke service built with Node.js, Express, MySQL, Docker, and Rabbi
 │   ├── db-init/             # MySQL schema + seed data
 │   └── docker-compose.yml   # All services on one machine
 │
-└── co3404-option2/          # Microservice architecture (HIGH 2:2)
+└── co3404-option2/          # Microservices & API Gateway (HIGH 2:2 / HIGH 2:1)
     ├── joke-microservice/   # VM1: joke-app + ETL + MySQL
     ├── submit-microservice/ # VM2: submit-app + RabbitMQ
+    ├── kong-gateway/        # VM3: Kong Gateway + Terraform + TLS Certs
     └── DOCUMENTATION.md     # Full architecture documentation
 ```
 
@@ -47,6 +48,24 @@ cd co3404-option2/joke-microservice && docker-compose up --build -d
 
 See [DOCUMENTATION.md](co3404-option2/DOCUMENTATION.md) for full architecture details, message flow, and Azure deployment guide.
 
+## Option 3 — Kong API Gateway & Terraform
+
+Added a third VM serving as a central reverse proxy and API Gateway.
+
+- **Terraform:** Automated provisioning of Azure infrastructure (`kong-vm`, Public IP, NSG rules).
+- **Kong API Gateway:** DB-less declarative routing mapping external requests to internal private VMs over Azure's Virtual Network.
+- **HTTPS & Rate Limiting:** Traffic encrypted via `mkcert` TLS certs. Spam protection enabled on `/joke` endpoints (max 5 req/min).
+
+```bash
+# Provision infrastructure
+cd co3404-option2/kong-gateway/terraform && terraform apply
+
+# Start API Gateway
+cd co3404-option2/kong-gateway && docker-compose up -d
+```
+
+See [EXPLANATION.md](EXPLANATION.md) and [CHANGELOG.md](CHANGELOG.md) for complete technical breakdowns and release notes.
+
 ## Tech Stack
 
 | Technology | Purpose |
@@ -54,6 +73,8 @@ See [DOCUMENTATION.md](co3404-option2/DOCUMENTATION.md) for full architecture de
 | Node.js / Express | Web servers & APIs |
 | MySQL 8.0 | Persistent data storage |
 | RabbitMQ | Message queue (Option 2) |
-| Docker / Docker Compose | Containerisation |
+| Docker / DockerCompose | Containerisation |
 | Swagger UI | API documentation |
-| Azure VMs | Cloud deployment (Option 2) |
+| Azure VMs | Cloud deployment (VM1 + VM2) |
+| Terraform | IaC automation (Option 3) |
+| Kong | API Gateway / Rate limiting (Option 3) |

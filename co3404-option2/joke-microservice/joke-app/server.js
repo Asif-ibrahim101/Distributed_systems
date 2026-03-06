@@ -28,6 +28,19 @@ app.get('/types', async (req, res) => {
     }
 });
 
+// Alias for Kong routing — Kong forwards /joke-types → /joke-types on this server
+// The frontend uses /joke-types so it works through Kong's reverse proxy
+app.get('/joke-types', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT type FROM types ORDER BY type');
+        const types = rows.map(row => row.type);
+        res.json(types);
+    } catch (err) {
+        console.error('Error fetching types:', err.message);
+        res.status(500).json({ error: 'Failed to fetch joke types' });
+    }
+});
+
 /**
  * GET /joke/:type?count=N
  * Returns random jokes filtered by type.

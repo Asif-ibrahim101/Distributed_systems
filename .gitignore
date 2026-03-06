@@ -15,3 +15,13 @@ rmq-data/
 # Temporary files
 *.log
 ~$*
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
+*tfplan
+crash.log
+crash.*.log

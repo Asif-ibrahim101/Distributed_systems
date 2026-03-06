@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  kong:
+    image: kong/kong-gateway:3.4
+    container_name: kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yaml
+      KONG_PROXY_LISTEN: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8444 ssl"
+      KONG_SSL_CERT: /etc/kong/certs/cert.pem
+      KONG_SSL_CERT_KEY: /etc/kong/certs/key.pem
+      KONG_LOG_LEVEL: info
+    ports:
+      - "80:8000"      # HTTP proxy
+      - "443:8443"     # HTTPS proxy
+      - "8445:8444"    # Admin API (HTTPS)
+    volumes:
+      - ./kong.yaml:/etc/kong/kong.yaml:ro
+      - ./certs:/etc/kong/certs:ro
+    networks:
+      - kong-network
+    restart: unless-stopped
+
+networks:
+  kong-network:
+    driver: bridge
