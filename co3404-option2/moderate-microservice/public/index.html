@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Moderate submitted jokes">
+    <title>Moderate Jokes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="user-status-bar">
+        <span id="auth-status">Checking login status...</span>
+        <a href="/login" id="login-link" class="hidden">Log In</a>
+        <a href="/logout" id="logout-link" class="hidden">Log Out</a>
+    </div>
+
+    <div class="container">
+        <h1>🛡️ Joke Moderation</h1>
+        <p class="subtitle">Review and approve submitted jokes before they go live!</p>
+
+        <!-- Waiting State -->
+        <div id="waiting-state" class="center-content">
+            <div class="spinner"></div>
+            <p>Waiting for new jokes...</p>
+        </div>
+
+        <!-- Moderation Form (Hidden Initially) -->
+        <form id="moderate-form" class="hidden">
+            <input type="hidden" id="delivery-tag">
+            
+            <div class="form-group">
+                <label for="setup">Setup (Editable):</label>
+                <textarea id="setup" rows="2" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="punchline">Punchline (Editable):</label>
+                <textarea id="punchline" rows="2" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="type-select">Joke Type:</label>
+                <select id="type-select">
+                    <!-- Populated via API -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="new-type-toggle"> Map to a new type instead
+                </label>
+                <input type="text" id="new-type-input" class="hidden" placeholder="Enter new joke type">
+            </div>
+
+            <div class="action-buttons">
+                <button type="button" id="reject-btn" class="btn-reject">Reject & Next</button>
+                <button type="submit" id="approve-btn" class="btn-approve">Approve & Submit</button>
+            </div>
+        </form>
+
+        <div id="feedback" class="feedback hidden"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

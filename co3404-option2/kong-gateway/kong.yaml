@@ -1,5 +1,9 @@
 _format_version: "3.0"
 
+# TLS is configured via KONG_SSL_CERT and KONG_SSL_CERT_KEY environment
+# variables in docker-compose.yml, using mkcert-generated certificates
+# stored in ./certs/cert.pem and ./certs/key.pem
+
 services:
   # Joke service — routes to VM1
   - name: joke-service
@@ -9,11 +13,16 @@ services:
         paths:
           - /joke
         strip_path: false
+        protocols:
+          - https
+          - http
       - name: joke-types-route
         paths:
           - /joke-types
         strip_path: false
-        # /joke-types → http://10.0.0.4:4000/types
+        protocols:
+          - https
+          - http
     plugins:
       - name: rate-limiting
         config:
@@ -30,12 +39,81 @@ services:
         paths:
           - /submit
         strip_path: false
+        protocols:
+          - https
+          - http
       - name: submit-types-route
         paths:
           - /submit-types
         strip_path: false
-        # /submit-types → http://10.0.0.5:4200/types
+        protocols:
+          - https
+          - http
       - name: docs-route
         paths:
           - /docs
         strip_path: false
+        protocols:
+          - https
+          - http
+
+  # Moderate service — routes to VM4
+  - name: moderate-service
+    url: http://10.0.0.5:4100
+    routes:
+      - name: moderate-route
+        paths:
+          - /moderate
+        strip_path: false
+        protocols:
+          - https
+          - http
+      - name: moderated-route
+        paths:
+          - /moderated
+        strip_path: false
+        protocols:
+          - https
+          - http
+      - name: moderate-types-route
+        paths:
+          - /moderate-types
+        strip_path: false
+        protocols:
+          - https
+          - http
+      - name: auth-status-route
+        paths:
+          - /auth-status
+        strip_path: false
+        protocols:
+          - https
+          - http
+      - name: login-route
+        paths:
+          - /login
+        strip_path: false
+        protocols:
+          - https
+          - http
+      - name: logout-route
+        paths:
+          - /logout
+        strip_path: false
+        protocols:
+          - https
+          - http
+      - name: callback-route
+        paths:
+          - /callback
+        strip_path: false
+        protocols:
+          - https
+          - http
+      - name: default-route
+        paths:
+          - /
+        strip_path: false
+        protocols:
+          - https
+          - http

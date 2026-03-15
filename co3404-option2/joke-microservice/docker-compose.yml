@@ -5,6 +5,7 @@ services:
   database:
     image: mysql:8.0
     container_name: joke-database
+    profiles: [ "mysql" ]
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
@@ -25,6 +26,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # MongoDB database
+  mongodb:
+    image: mongo:7.0
+    container_name: joke-database-mongo
+    profiles: [ "mongo" ]
+    environment:
+      MONGO_INITDB_DATABASE: ${DB_NAME}
+    ports:
+      - "4002:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - joke-network
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Joke retrieval app — serves random jokes (UNCHANGED from Option 1)
   joke:
     build: ./joke-app
@@ -32,13 +53,12 @@ services:
     ports:
       - "4000:3000"
     environment:
-      DB_HOST: database
+      DB_TYPE: ${DB_TYPE}
+      DB_HOST: ${DB_HOST}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
-    depends_on:
-      database:
-        condition: service_healthy
+
     networks:
       - joke-network
     restart: unless-stopped
@@ -50,14 +70,13 @@ services:
     ports:
       - "4001:3001"
     environment:
-      DB_HOST: database
+      DB_TYPE: ${DB_TYPE}
+      DB_HOST: ${DB_HOST}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
-      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${VM2_PRIVATE_IP}:5672
-    depends_on:
-      database:
-        condition: service_healthy
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_IP}:5672
+
     networks:
       - joke-network
     restart: unless-stopped
@@ -65,6 +84,7 @@ services:
 # Named volume for persistent DB storage
 volumes:
   db-data:
+  mongo-data:
 
     # Private bridge network for container-to-container communication
 networks:

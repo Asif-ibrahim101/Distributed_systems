@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const db = require('./db');
+const db = require('./db'); // Resolves to db/index.js which picks mysql/mongo
 
 const app = express();
 const PORT = 3000;

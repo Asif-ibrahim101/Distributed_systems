@@ -1,8 +1,8 @@
-/* Premium modern design for Submit App */
+/* Premium modern design for Moderate App */
 :root {
     --primary-color: #6366f1;
     --primary-hover: #4f46e5;
-    --secondary-color: #ec4899;
+    --secondary-color: #f43f5e;
     --background-start: #0f172a;
     --background-end: #1e1b4b;
     --card-bg: rgba(255, 255, 255, 0.05);
@@ -17,6 +17,8 @@
     --error-bg: rgba(239, 68, 68, 0.2);
     --error-border: #f87171;
     --error-text: #fca5a5;
+    --approve-gradient: linear-gradient(135deg, #10b981, #059669);
+    --reject-gradient: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
 * {
@@ -30,7 +32,7 @@ body {
     background: linear-gradient(135deg, var(--background-start), var(--background-end));
     color: var(--text-main);
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
     min-height: 100vh;
     padding: 20px;
@@ -38,7 +40,7 @@ body {
     overflow-x: hidden;
 }
 
-/* Background floating orbs for dynamic feel */
+/* Background floating orbs */
 body::before,
 body::after {
     content: '';
@@ -48,21 +50,21 @@ body::after {
     border-radius: 50%;
     filter: blur(80px);
     z-index: -1;
-    opacity: 0.5;
-    animation: float 10s infinite alternate ease-in-out;
+    opacity: 0.4;
+    animation: float 12s infinite alternate ease-in-out;
 }
 
 body::before {
     background: var(--primary-color);
-    top: -5%;
-    right: 15%;
+    top: 5%;
+    left: 15%;
 }
 
 body::after {
     background: var(--secondary-color);
-    bottom: 5%;
-    left: 10%;
-    animation-delay: -3s;
+    bottom: -5%;
+    right: 15%;
+    animation-delay: -4s;
 }
 
 @keyframes float {
@@ -71,8 +73,36 @@ body::after {
     }
 
     100% {
-        transform: translateY(-30px) scale(1.1);
+        transform: translateY(40px) scale(1.1);
     }
+}
+
+.user-status-bar {
+    width: 100%;
+    max-width: 650px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    background: var(--card-bg);
+    backdrop-filter: blur(8px);
+    border-radius: 99px;
+    border: 1px solid var(--card-border);
+}
+
+.user-status-bar a {
+    color: #818cf8;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.user-status-bar a:hover {
+    color: #a5b4fc;
 }
 
 .container {
@@ -83,14 +113,14 @@ body::after {
     border-radius: var(--radius);
     box-shadow: var(--shadow-glow), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     padding: 3rem;
-    max-width: 550px;
+    max-width: 650px;
     width: 100%;
 }
 
 h1 {
     font-size: 2.2rem;
     font-weight: 800;
-    background: linear-gradient(to right, #818cf8, #a78bfa);
+    background: linear-gradient(to right, #38bdf8, #818cf8);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -104,6 +134,32 @@ h1 {
     margin-bottom: 2rem;
     text-align: center;
     font-size: 1.05rem;
+}
+
+.center-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 250px;
+    color: var(--text-muted);
+    animation: fadeIn 0.5s ease-out;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .form-group {
@@ -123,8 +179,9 @@ input[type="text"],
 select {
     width: 100%;
     padding: 0.875rem 1.25rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--card-border);
+    background: rgba(0, 0, 0, 0.3);
+    /* slightly darker for moderation inputs to denote editability */
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 0.75rem;
     color: var(--text-main);
     font-size: 1rem;
@@ -133,9 +190,12 @@ select {
     outline: none;
 }
 
-textarea::placeholder,
-input[type="text"]::placeholder {
-    color: var(--text-muted);
+textarea:focus,
+input[type="text"]:focus,
+select:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+    background: rgba(0, 0, 0, 0.5);
 }
 
 select {
@@ -152,54 +212,46 @@ select option {
     color: var(--text-main);
 }
 
-textarea:focus,
-input[type="text"]:focus,
-select:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
-    background: rgba(0, 0, 0, 0.4);
-}
-
-input[type="checkbox"] {
-    width: 1.2rem;
-    height: 1.2rem;
-    margin-right: 0.5rem;
-    accent-color: var(--primary-color);
-    cursor: pointer;
-    vertical-align: middle;
-}
-
-.checkbox-label {
+.action-buttons {
     display: flex;
-    align-items: center;
-    font-weight: 500;
-    color: var(--text-muted);
-    cursor: pointer;
+    gap: 1.5rem;
+    margin-top: 2.5rem;
 }
 
 button {
-    display: block;
-    width: 100%;
+    flex: 1;
     padding: 1rem;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
     color: white;
     border: none;
     border-radius: 99px;
     font-size: 1.05rem;
     font-weight: 600;
     cursor: pointer;
-    margin-top: 2rem;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
 }
 
-button:hover {
+.btn-approve {
+    background: var(--approve-gradient);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.btn-approve:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.btn-reject {
+    background: var(--reject-gradient);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.btn-reject:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
 button:active {
-    transform: translateY(0) scale(0.98);
+    transform: translateY(0) scale(0.98) !important;
 }
 
 .feedback {
@@ -208,34 +260,20 @@ button:active {
     border-radius: 0.75rem;
     text-align: center;
     font-weight: 600;
-    font-size: 0.95rem;
-    animation: fadeInSlide 0.4s ease-out forwards;
 }
 
-.feedback.success {
-    background-color: var(--success-bg);
-    color: var(--success-text);
-    border: 1px solid var(--success-border);
+.hidden {
+    display: none !important;
 }
 
-.feedback.error {
-    background-color: var(--error-bg);
-    color: var(--error-text);
-    border: 1px solid var(--error-border);
-}
-
-@keyframes fadeInSlide {
+@keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(10px);
     }
 
     to {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-.hidden {
-    display: none !important;
 }

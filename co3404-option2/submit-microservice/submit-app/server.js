@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const amqplib = require('amqplib');
-const axios = require('axios');
+
 const fs = require('fs');
 const path = require('path');
 const swaggerUi = require('swagger-ui-express');
@@ -12,7 +12,7 @@ const PORT = 3200;
 
 const QUEUE_NAME = 'SUBMITTED_JOKES';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@rabbitmq:5672';
-const JOKE_SERVICE_URL = process.env.JOKE_SERVICE_URL || 'http://10.0.0.4:4000';
+
 
 // Cache file path — stored on a Docker volume so it persists across restarts
 const CACHE_FILE = '/data/types-cache.json';
@@ -53,6 +53,27 @@ async function connectRabbitMQ(retries = 10, delay = 5000) {
             });
 
             rabbitChannel = channel;
+
+            // Subscribe to type_update exchange
+            const subChannel = await connection.createChannel();
+            await subChannel.assertExchange('type_update', 'fanout', { durable: true });
+            const q = await subChannel.assertQueue('sub_type_update', { durable: true });
+            await subChannel.bindQueue(q.queue, 'type_update', '');
+
+            subChannel.consume(q.queue, (msg) => {
+                if (msg) {
+                    try {
+                        const types = JSON.parse(msg.content.toString());
+                        writeCache(types);
+                        console.log('Types cache updated via event');
+                        subChannel.ack(msg);
+                    } catch (err) {
+                        console.error('Failed to update types cache:', err);
+                        subChannel.nack(msg, false, false);
+                    }
+                }
+            });
+
             return channel;
         } catch (err) {
             console.log(`RabbitMQ not ready, retrying in ${delay / 1000}s... (${i + 1}/${retries})`);
@@ -121,41 +142,25 @@ function readCache() {
  *       500:
  *         description: Server error
  */
-app.get('/types', async (req, res) => {
+app.get('/types', (req, res) => {
     try {
-        // Fetch types from the joke microservice on VM1 via HTTP
-        const response = await axios.get(`${JOKE_SERVICE_URL}/types`, {
-            timeout: 5000, // 5-second timeout to avoid hanging the UI
-        });
-
-        const types = response.data;
-
-        // Cache the response so we can serve it if the joke service goes down
-        writeCache(types);
-
+        const types = readCache();
         res.json(types);
     } catch (err) {
-        // Joke service is unavailable — fall back to cached types
-        console.error('Failed to fetch types from joke service, using cache:', err.message);
-        const cachedTypes = readCache();
-        res.json(cachedTypes);
+        console.error('Error reading types cache:', err.message);
+        res.status(500).json({ error: 'Failed to fetch joke types' });
     }
 });
 
 // Alias for Kong routing — Kong forwards /submit-types → /submit-types on this server
 // The frontend uses /submit-types so it works through Kong's reverse proxy
-app.get('/submit-types', async (req, res) => {
+app.get('/submit-types', (req, res) => {
     try {
-        const response = await axios.get(`${JOKE_SERVICE_URL}/types`, {
-            timeout: 5000,
-        });
-        const types = response.data;
-        writeCache(types);
+        const types = readCache();
         res.json(types);
     } catch (err) {
-        console.error('Failed to fetch types from joke service, using cache:', err.message);
-        const cachedTypes = readCache();
-        res.json(cachedTypes);
+        console.error('Error reading types cache:', err.message);
+        res.status(500).json({ error: 'Failed to fetch joke types' });
     }
 });
 
@@ -256,6 +261,11 @@ app.post('/submit', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Submit app running on port ${PORT}`);
     console.log(`Swagger docs available at http://localhost:${PORT}/docs`);
+
+    // Ensure cache has initial seed values if file is missing completely
+    if (readCache().length === 0) {
+        writeCache(["general", "programming", "dad", "knock-knock"]);
+    }
 
     // Connect to RabbitMQ in the background (non-blocking)
     connectRabbitMQ();

@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  moderate:
+    build: .
+    container_name: moderate-app
+    ports:
+      - "4100:3100"
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_IP}:5672
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
+      AUTH_ISSUER_URL: ${AUTH_ISSUER_URL}
+      BASE_URL: ${BASE_URL}
+    volumes:
+      - types-cache:/data
+    networks:
+      - moderate-network
+    restart: unless-stopped
+
+volumes:
+  types-cache:
+
+
+networks:
+  moderate-network:
+    driver: bridge

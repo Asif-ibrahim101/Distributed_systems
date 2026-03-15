@@ -1,7 +1,7 @@
 const amqplib = require('amqplib');
-const db = require('./db');
+const db = require('./db'); // Resolves to db/index.js
 
-const QUEUE_NAME = 'SUBMITTED_JOKES';
+const QUEUE_NAME = 'MODERATED_JOKES';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@10.0.0.5:5672';
 
 /**
@@ -39,6 +39,15 @@ async function processMessage(channel, msg) {
         if (isNewType) {
             await db.query('INSERT IGNORE INTO types (type) VALUES (?)', [type]);
             console.log(`  Inserted new type: "${type}"`);
+
+            // Publish type update event
+            const [allTypesRows] = await db.query('SELECT type FROM types ORDER BY type');
+            const allTypes = allTypesRows.map(row => row.type);
+
+            const exchange = 'type_update';
+            await channel.assertExchange(exchange, 'fanout', { durable: true });
+            channel.publish(exchange, '', Buffer.from(JSON.stringify(allTypes)));
+            console.log(`  Published type_update event with ${allTypes.length} types`);
         }
 
         // Look up the type_id for the given type name

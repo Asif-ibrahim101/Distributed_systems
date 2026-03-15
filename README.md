@@ -1,21 +1,24 @@
 # CO3404 Distributed Systems — Joke Service
 
-A distributed joke service built with Node.js, Express, MySQL, Docker, and RabbitMQ.
+A distributed joke service built with Node.js, Express, MongoDB/MySQL, Docker, RabbitMQ, and Kong API Gateway.
 
 ## Project Structure
 
 ```
-├── co3404-option1/          # Monolithic architecture (HIGH 3rd class)
-│   ├── joke-app/            # Joke retrieval app (port 4000)
-│   ├── submit-app/          # Joke submission app (port 4200)
-│   ├── db-init/             # MySQL schema + seed data
-│   └── docker-compose.yml   # All services on one machine
+├── co3404-option1/                # Monolithic architecture (HIGH 3rd class)
+│   ├── joke-app/                  # Joke retrieval app (port 4000)
+│   ├── submit-app/                # Joke submission app (port 4200)
+│   ├── db-init/                   # MySQL schema + seed data
+│   └── docker-compose.yml         # All services on one machine
 │
-└── co3404-option2/          # Microservices & API Gateway (HIGH 2:2 / HIGH 2:1)
-    ├── joke-microservice/   # VM1: joke-app + ETL + MySQL
-    ├── submit-microservice/ # VM2: submit-app + RabbitMQ
-    ├── kong-gateway/        # VM3: Kong Gateway + Terraform + TLS Certs
-    └── DOCUMENTATION.md     # Full architecture documentation
+└── co3404-option2/                # Microservices & API Gateway (HIGH 2:2 / HIGH 2:1)
+    ├── joke-microservice/         # VM1: joke-app + ETL + MongoDB/MySQL
+    ├── submit-microservice/       # VM2: submit-app
+    ├── moderate-microservice/     # VM4: moderation UI + Auth0 OIDC
+    ├── rabbitmq/                  # VM5: standalone RabbitMQ broker
+    ├── kong-gateway/              # VM3: Kong Gateway + Terraform + TLS
+    ├── deploy.sh                  # Full deployment script
+    └── DOCUMENTATION.md           # Full architecture documentation
 ```
 
 ## Option 1 — Monolithic
@@ -32,17 +35,25 @@ docker-compose up --build -d
 
 ## Option 2 — Microservices + RabbitMQ
 
-Refactored into two independent microservices for deployment on separate Azure VMs.
+Refactored into independent microservices for deployment on separate Azure VMs.
 
-- **Submit app** publishes jokes to a RabbitMQ queue (no direct DB access)
-- **ETL service** consumes from the queue and writes to MySQL
-- **GET /types** fetches via HTTP from joke-app with file-based cache fallback
+- **Submit app** (VM2) publishes jokes to a RabbitMQ queue (no direct DB access)
+- **Moderate app** (VM4) pulls jokes from the submit queue, allows approve/reject via Auth0-protected UI, and publishes approved jokes to a moderated queue
+- **ETL service** (VM1) consumes from the moderated queue and writes to MongoDB/MySQL
+- **RabbitMQ** (VM5) runs as a standalone broker on its own VM
+- **GET /types** uses a fanout exchange with file-based cache fallback for type synchronisation across services
 
 ```bash
-# VM2 first (RabbitMQ)
+# VM5 — RabbitMQ broker
+cd co3404-option2/rabbitmq && docker-compose up -d
+
+# VM2 — Submit service
 cd co3404-option2/submit-microservice && docker-compose up --build -d
 
-# VM1
+# VM4 — Moderate service
+cd co3404-option2/moderate-microservice && docker-compose up --build -d
+
+# VM1 — Joke + ETL service
 cd co3404-option2/joke-microservice && docker-compose up --build -d
 ```
 
@@ -52,9 +63,10 @@ See [DOCUMENTATION.md](co3404-option2/DOCUMENTATION.md) for full architecture de
 
 Added a third VM serving as a central reverse proxy and API Gateway.
 
-- **Terraform:** Automated provisioning of Azure infrastructure (`kong-vm`, Public IP, NSG rules).
-- **Kong API Gateway:** DB-less declarative routing mapping external requests to internal private VMs over Azure's Virtual Network.
-- **HTTPS & Rate Limiting:** Traffic encrypted via `mkcert` TLS certs. Spam protection enabled on `/joke` endpoints (max 5 req/min).
+- **Terraform:** Automated provisioning of Azure infrastructure (VMs, Public IP, NSG rules)
+- **Kong API Gateway:** DB-less declarative routing mapping external requests to internal private VMs over Azure's Virtual Network
+- **HTTPS & Rate Limiting:** Traffic encrypted via `mkcert` TLS certs. Spam protection on `/joke` endpoints (max 5 req/min)
+- **Routing:** All services accessible via a single public IP — `/joke`, `/submit`, `/moderate`, `/docs`
 
 ```bash
 # Provision infrastructure
@@ -64,17 +76,17 @@ cd co3404-option2/kong-gateway/terraform && terraform apply
 cd co3404-option2/kong-gateway && docker-compose up -d
 ```
 
-See [EXPLANATION.md](EXPLANATION.md) and [CHANGELOG.md](CHANGELOG.md) for complete technical breakdowns and release notes.
-
 ## Tech Stack
 
 | Technology | Purpose |
 |---|---|
 | Node.js / Express | Web servers & APIs |
-| MySQL 8.0 | Persistent data storage |
-| RabbitMQ | Message queue (Option 2) |
-| Docker / DockerCompose | Containerisation |
+| MongoDB / MySQL | Persistent data storage |
+| RabbitMQ | Message queue + fanout exchange |
+| Docker / Docker Compose | Containerisation |
 | Swagger UI | API documentation |
-| Azure VMs | Cloud deployment (VM1 + VM2) |
-| Terraform | IaC automation (Option 3) |
-| Kong | API Gateway / Rate limiting (Option 3) |
+| Azure VMs | Cloud deployment (5 VMs) |
+| Terraform | IaC automation |
+| Kong | API Gateway / reverse proxy / rate limiting |
+| Auth0 (OIDC) | Authentication for moderation service |
+| mkcert | TLS certificate generation |
