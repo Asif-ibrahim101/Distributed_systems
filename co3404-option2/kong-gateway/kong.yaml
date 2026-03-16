@@ -5,7 +5,7 @@ _format_version: "3.0"
 # stored in ./certs/cert.pem and ./certs/key.pem
 
 services:
-  # Joke service — routes to VM1
+  # Joke API — routes to VM1 (rate-limited)
   - name: joke-service
     url: http://10.0.0.4:4000
     routes:
@@ -31,6 +31,18 @@ services:
           fault_tolerant: true
           hide_client_headers: false
 
+  # Joke App UI — same backend, no rate limiting
+  - name: joke-app-ui-service
+    url: http://10.0.0.4:4000
+    routes:
+      - name: joke-app-ui
+        paths:
+          - /joke-app
+        strip_path: true
+        protocols:
+          - https
+          - http
+
   # Submit service — routes to VM2
   - name: submit-service
     url: http://10.0.0.5:4200
@@ -53,6 +65,13 @@ services:
         paths:
           - /docs
         strip_path: false
+        protocols:
+          - https
+          - http
+      - name: submit-app-ui
+        paths:
+          - /submit-app
+        strip_path: true
         protocols:
           - https
           - http

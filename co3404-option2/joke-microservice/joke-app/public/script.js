@@ -12,7 +12,9 @@ const jokePunchline = document.getElementById('joke-punchline');
 async function loadTypes() {
     try {
         const res = await fetch('/joke-types');
+        if (!res.ok) return; // Don't wipe dropdown on error (e.g. rate limit 429)
         const types = await res.json();
+        if (!Array.isArray(types)) return;
 
         // Preserve whatever the user currently has selected
         const currentValue = typeSelect.value;
