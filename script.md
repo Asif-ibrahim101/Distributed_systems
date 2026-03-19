@@ -8,19 +8,19 @@
 ### Terminal — pre-set variables:
 ```bash
 SSH_OPTS="-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa"
-VM1="azureuser@20.251.8.242"
-VM2="azureuser@51.120.83.211"
-VM3="azureuser@20.100.190.184"
-KONG_IP="20.100.190.184"
+VM1="azureuser@20.100.185.233"
+VM2="azureuser@20.100.186.237"
+VM3="azureuser@20.100.186.201"
+KONG_IP="20.100.186.201"
 ```
 
 ### Browser tabs open (all through Kong — single entry point):
 1. Azure Portal — co3404-rg resource group
-2. Joke App UI — `http://20.100.190.184/joke-app/`
-3. Submit App UI — `http://20.100.190.184/submit-app/`
-4. Swagger Docs — `http://20.100.190.184/docs`
-5. Moderate App UI — `http://20.100.190.184/`
-6. RabbitMQ Console — `http://51.120.83.211:15672`
+2. Joke App UI — `http://20.100.186.201/joke-app/`
+3. Submit App UI — `http://20.100.186.201/submit-app/`
+4. Swagger Docs — `http://20.100.186.201/docs`
+5. Moderate App UI — `http://20.100.186.201/`
+6. RabbitMQ Console — `http://20.100.186.237:15672`
 
 ### SSH sessions ready in separate terminal tabs:
 - Tab for VM1, Tab for VM2, Tab for VM3
@@ -52,11 +52,15 @@ ssh $SSH_OPTS $VM3 "sudo docker ps --format 'table {{.Names}}\t{{.Status}}'"
 
 **[Screen: VS Code showing co3404-option1/ folder structure briefly]**
 
+**OPEN: `co3404-option1/docker-compose.yml`** — show the three services (joke-app, submit-app, mysql) on one network
+
 "Option 1 required a basic distributed system — two separate Express applications sharing a MySQL database, all running in Docker containers.
 
 I built a **Joke app** on port 3000 and a **Submit app** on port 3200, with MySQL as the shared database. All three run in Docker containers via a single docker-compose file on one Docker network. The Joke app is exposed on port 4000 and the Submit app on port 4200."
 
 ### Joke App Demo
+
+**OPEN: `co3404-option1/joke-app/server.js`** — briefly show the GET /types and GET /joke/:type endpoints before switching to browser
 
 **[Switch to browser: Joke App UI through Kong]**
 
@@ -79,6 +83,8 @@ curl -sk https://$KONG_IP/joke/programming?count=3 | python3 -m json.tool
 
 ### Submit App Demo
 
+**OPEN: `co3404-option1/submit-app/server.js`** — briefly show POST /submit endpoint and validation logic
+
 **[Switch to browser: Submit App UI]**
 
 "The Submit app lets users enter a new joke. The requirements specified: a setup field, a punchline field, a dropdown for type selection populated from the database, an option to add a new type, a submit button that sends all data at once, and client-side validation preventing empty submissions."
@@ -91,6 +97,8 @@ curl -sk https://$KONG_IP/joke/programming?count=3 | python3 -m json.tool
 
 ### Swagger Documentation
 
+**OPEN: `co3404-option2/submit-microservice/submit-app/swagger.js`** — show the Swagger spec definition before switching to the live docs
+
 **[Switch to browser: Swagger docs at http://KONG_IP/docs]**
 
 "The assignment required OpenAPI documentation at GET /docs with interactive testing. Here it is — all endpoints documented with request and response schemas. I can test them directly from here."
@@ -99,11 +107,17 @@ curl -sk https://$KONG_IP/joke/programming?count=3 | python3 -m json.tool
 
 ### Database Structure
 
+**OPEN: `co3404-option1/db-init/init.sql`** — show the CREATE TABLE statements, foreign key, and UNIQUE constraint
+
+**OPEN: `co3404-option1/joke-app/db.js`** — show the mysql2 connection pool and parameterised queries
+
 "The database has two tables — types and jokes — with a foreign key relationship. The types table has a UNIQUE constraint preventing duplicates. Both apps use mysql2 connection pools with parameterised queries to prevent SQL injection.
 
 The data lives on a Docker persistent volume, so it survives container restarts."
 
 ### Resilience
+
+**OPEN: `co3404-option1/docker-compose.yml`** — point out the separate service definitions showing they only share the `joke-network` and database
 
 "The key non-functional requirement for Option 1 was service independence. If I stop the submit app, the joke app keeps working. If I stop the joke app, submit keeps working. They only share the database — they don't depend on each other."
 
@@ -112,6 +126,8 @@ The data lives on a Docker persistent volume, so it survives container restarts.
 ## 4:00 – 7:30 | OPTION 2 — MICROSERVICES + RABBITMQ (3.5 minutes)
 
 **[Screen: brief architecture diagram or whiteboard]**
+
+**OPEN: `co3404-option2/submit-microservice/submit-app/server.js`** — scroll to the RabbitMQ `channel.sendToQueue('SUBMITTED_JOKES', ...)` call to show the publish logic
 
 "Option 2 required splitting the system across two Azure VMs and introducing asynchronous messaging. Three new things were added: RabbitMQ as a message broker, an ETL service, and a types file cache.
 
@@ -125,13 +141,15 @@ The fundamental change is that the **submit app no longer writes to the database
 
 "The joke has been published to the RabbitMQ queue."
 
-**[Switch to browser: RabbitMQ Console at http://51.120.83.211:15672]**
+**[Switch to browser: RabbitMQ Console at http://20.100.186.237:15672]**
 
 "Here in the RabbitMQ management console, you can see the queues. The message is waiting to be consumed.
 
 The requirements specified that queues must be **durable** — they survive broker restarts — and messages must be **persistent** — written to disk, not just memory. The ETL acknowledges each message only after successfully writing to the database. If the ETL crashes before acknowledging, the message stays on the queue and gets redelivered. No data loss."
 
 ### ETL Service
+
+**OPEN: `co3404-option2/joke-microservice/etl/etl.js`** — show the `channel.consume('MODERATED_JOKES', ...)` handler, the DB insert logic, and `channel.ack(msg)`
 
 **[Switch to terminal:]**
 ```bash
@@ -141,6 +159,8 @@ ssh $SSH_OPTS $VM1 "sudo docker logs etl-app --tail 10"
 "Here are the ETL logs — you can see it consuming messages from the MODERATED_JOKES queue, inserting types if they're new, and inserting jokes. The ETL runs on its own Node.js server in a Docker container alongside the joke app and database on VM1."
 
 ### Types Cache
+
+**OPEN: `co3404-option2/submit-microservice/submit-app/server.js`** — scroll to the fanout exchange subscription and the `fs.writeFileSync('/data/types-cache.json', ...)` call
 
 "The other key change was the types cache. Since the submit app can't access the database anymore, it needs another way to populate the types dropdown. The submit service subscribes to a type_update fanout exchange on RabbitMQ. When the ETL inserts a new type, it publishes an event to that exchange. The submit service receives the event and writes the types to a JSON cache file at /data/types-cache.json on a Docker volume. If RabbitMQ is down, the cache file is used as fallback — it even seeds with default types on first startup.
 
@@ -189,13 +209,15 @@ I implemented **Kong** as a reverse proxy on VM3. Instead of users accessing mul
 
 ### Single Entry Point
 
+**OPEN: `co3404-option2/kong-gateway/kong.yaml`** — keep this open for the whole Kong section, scroll through services and routes as you explain
+
 "Let me show the kong.yaml."
 
-**[Switch to VS Code and open co3404-option2/kong-gateway/kong.yaml]**
-
-"Each service has a URL pointing to the private IP of its VM. Routes map paths to services — /joke and /joke-types go to the joke-service on VM1 at 10.0.0.4:4000, /submit and /submit-types go to the submit-service on VM2 at 10.0.0.5:4200, /moderate and /moderated go to the moderate-service on VM2 at 10.0.0.5:4100. The microservices are hidden behind the gateway."
+"Each service has a URL pointing to the private IP of its VM. Routes map paths to services — /joke goes to the rate-limited joke-service on VM1 at 10.0.0.4:4000, /joke-app and /joke-types go to a separate non-rate-limited joke-app-ui-service on the same backend, /submit, /submit-types, and /submit-app go to the submit-service on VM2 at 10.0.0.5:4200, /moderate, /moderated, and the auth routes go to the moderate-service on VM2 at 10.0.0.5:4100. The microservices are hidden behind the gateway."
 
 ### HTTPS
+
+**OPEN: `co3404-option2/kong-gateway/docker-compose.yml`** — show the KONG_SSL_CERT / KONG_SSL_CERT_KEY env vars and the volume mount for certs
 
 **[Switch to browser — show HTTPS access]**
 
@@ -203,22 +225,22 @@ I implemented **Kong** as a reverse proxy on VM3. Instead of users accessing mul
 
 ### Rate Limiting
 
-"I applied the rate-limiting plugin to the joke service — set to 5 requests per minute to make it easy to demonstrate."
+"I applied the rate-limiting plugin to the joke API routes — set to 5 requests per minute to make it easy to demonstrate. Note that the joke-types endpoint is on a separate non-rate-limited service so the dropdowns always work."
 
 **[Paste in terminal:]**
 ```bash
-for i in $(seq 1 10); do echo "Request $i: $(curl -s -o /dev/null -w '%{http_code}' http://$KONG_IP/joke-types)"; done
+for i in $(seq 1 10); do echo "Request $i: $(curl -s -o /dev/null -w '%{http_code}' http://$KONG_IP/joke/general)"; done
 ```
 
-"Requests 1 through 5 return 200. Then 429 — Too Many Requests. Kong blocks excessive traffic before it reaches the backend."
+"Requests 1 through 5 return 200. Then 429 — Too Many Requests. Kong blocks excessive traffic before it reaches the backend. The /joke-types endpoint isn't rate-limited — I separated it into its own service so the dropdowns always load, even when the joke API is throttled."
 
 ### Terraform
 
-**[Switch to VS Code: terraform files]**
+**OPEN: `co3404-option2/kong-gateway/terraform/main.tf`** — scroll through data sources, VM resources, NICs with static IPs, and provisioner blocks
+
+**OPEN (secondary): `co3404-option2/kong-gateway/terraform/outputs.tf`** — briefly show the output variables
 
 "The infrastructure is managed using Terraform. The main.tf uses data sources for existing infrastructure like the resource group and subnet, and resource blocks for creating VMs with public IPs, network security groups, and NICs — each with static private IPs on the shared VNet. Let me show the key parts."
-
-**[Show main.tf briefly — point out data sources, VM resources, and provisioners]**
 
 "One `terraform apply` command creates all the VMs with the correct network config, public IP, and security group rules."
 
@@ -232,11 +254,15 @@ for i in $(seq 1 10); do echo "Request $i: $(curl -s -o /dev/null -w '%{http_cod
 
 ### 4a: Moderate Microservice (1 minute)
 
+**OPEN: `co3404-option2/moderate-microservice/server.js`** — show the `channel.get('SUBMITTED_JOKES')` pull-based consume, and the `publishChannel.sendToQueue('MODERATED_JOKES', ...)` publish logic
+
 "The moderate app adds a human review step. In Options 2-3, jokes went straight from the SUBMITTED_JOKES queue to the ETL. Now they go through a moderator first.
 
 The message flow is: the submit app publishes to the SUBMITTED_JOKES queue, the moderate app pulls one joke at a time using channel.get() — that's pull-based, not push-based, the moderator controls the pace — the moderator can edit the setup, punchline, or type, then approve or reject. Approved jokes go to the MODERATED_JOKES queue. The ETL now consumes from MODERATED_JOKES instead of SUBMITTED_JOKES.
 
 The moderate service uses two separate RabbitMQ channels — one for consuming from the submit queue and one for publishing to the moderated queue."
+
+**OPEN: `co3404-option2/moderate-microservice/public/script.js`** — briefly show the approve/reject fetch calls and the polling logic
 
 **[Switch to Moderate UI at http://KONG_IP/ — show a joke waiting]**
 
@@ -247,6 +273,8 @@ The moderate service uses two separate RabbitMQ channels — one for consuming f
 "When no jokes are waiting, the UI shows this polling state — it checks every second."
 
 ### 4b: ECST Events (1 minute)
+
+**OPEN: `co3404-option2/joke-microservice/etl/etl.js`** — scroll to the `channel.publish('type_update', '', ...)` fanout publish after inserting a new type
 
 "The Event-Carried State Transfer pattern is how types propagate across services. When the ETL inserts a new type into the database, it publishes a type_update event to a **fanout exchange** — that's the key design choice. A regular queue delivers each message to one consumer, but a fanout exchange broadcasts to all bound queues.
 
@@ -274,6 +302,12 @@ ssh $SSH_OPTS $VM1 "sudo docker logs etl-app --tail 5"
 
 ### 4c: Dual Database (30 seconds)
 
+**OPEN: `co3404-option2/joke-microservice/joke-app/db/index.js`** — show the factory pattern that switches between adapters based on DB_TYPE
+
+**OPEN (secondary): `co3404-option2/joke-microservice/joke-app/db/mongo-adapter.js`** — briefly show the MongoDB adapter interface
+
+**OPEN (secondary): `co3404-option2/joke-microservice/docker-compose.yml`** — show the `--profile mysql` / `--profile mongo` service definitions
+
 "I support both MySQL and MongoDB, switchable via the DB_TYPE environment variable. Docker Compose profiles control which database container starts — `--profile mysql` starts MySQL, `--profile mongo` starts MongoDB. Only one runs at a time.
 
 The code uses a factory pattern in db/index.js — it checks DB_TYPE and returns either the MySQL or MongoDB adapter. Both adapters expose the same query interface so the rest of the application code doesn't change at all."
@@ -286,6 +320,8 @@ ssh $SSH_OPTS $VM1 "sudo docker exec joke-database-mongo mongosh jokedb --eval '
 "Currently running MongoDB. Switching is a one-line env change plus swapping the Docker Compose profile — the application code doesn't change."
 
 ### 4d: OIDC Authentication (30 seconds)
+
+**OPEN: `co3404-option2/moderate-microservice/server.js`** — scroll to the `auth()` middleware config (authRequired: false) and the `checkAuth` middleware on POST /moderated
 
 "The moderate service requires authentication via Auth0 as my OIDC provider. I'm using the express-openid-connect library. The auth middleware is applied globally with authRequired set to false, so the moderate UI loads for everyone — but the POST /moderated endpoint is protected with a custom checkAuth middleware that returns 401 if the user isn't authenticated."
 
@@ -302,15 +338,19 @@ curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" -X POST http://$KONG_IP/mo
 
 ### 4e: CD Pipeline (30 seconds)
 
-**[Show terraform main.tf with provisioners]**
+**OPEN: `co3404-option2/kong-gateway/terraform/main.tf`** — scroll to the provisioner blocks (remote-exec for Docker install, local-exec for rsync, remote-exec for docker compose up)
 
-"The deployment is fully automated with Terraform provisioners. Each VM resource has three stages: a remote-exec provisioner installs Docker via SSH, a file provisioner copies the project files, and another remote-exec provisioner runs docker compose up. One `terraform apply` — zero manual steps.
+**OPEN (secondary): `co3404-option2/deploy.sh`** — show the redeployment script with SCP + docker compose restart logic
+
+"The deployment is fully automated with Terraform provisioners. Each VM resource has three stages: a remote-exec provisioner installs Docker via SSH, a local-exec provisioner uses rsync to copy the project files excluding node_modules, and another remote-exec provisioner fixes the environment variables for Azure private IPs and runs docker compose up. One `terraform apply` — zero manual steps.
 
 There's also a deploy.sh script that handles redeployment — it SCPs the updated code to each VM and restarts the containers."
 
 ### 4f: Polished UIs (15 seconds)
 
-**[Quickly flash through all three UIs]**
+**OPEN: `co3404-option2/joke-microservice/joke-app/public/index.html`** — briefly flash to show the HTML structure, then switch to browser
+
+**[Quickly flash through all three UIs in browser]**
 
 "All three frontends share a consistent design — loading states, validation feedback, responsive layout, and smooth animations like the punchline fade-in. Professional and usable as the assignment required."
 
@@ -366,10 +406,10 @@ The system is fully operational on Azure, resilient to failure, and every functi
 ```bash
 # === VARIABLES ===
 SSH_OPTS="-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa"
-VM1="azureuser@20.251.8.242"
-VM2="azureuser@51.120.83.211"
-VM3="azureuser@20.100.190.184"
-KONG_IP="20.100.190.184"
+VM1="azureuser@20.100.185.233"
+VM2="azureuser@20.100.186.237"
+VM3="azureuser@20.100.186.201"
+KONG_IP="20.100.186.201"
 
 # === SHOW ALL CONTAINERS ===
 ssh $SSH_OPTS $VM1 "sudo docker ps --format 'table {{.Names}}\t{{.Status}}'"
@@ -398,7 +438,7 @@ ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mongo 
 # Open in VS Code: co3404-option2/kong-gateway/kong.yaml
 
 # === OPTION 3: RATE LIMITING TEST ===
-for i in $(seq 1 10); do echo "Request $i: $(curl -s -o /dev/null -w '%{http_code}' http://$KONG_IP/joke-types)"; done
+for i in $(seq 1 10); do echo "Request $i: $(curl -s -o /dev/null -w '%{http_code}' http://$KONG_IP/joke/general)"; done
 
 # === OPTION 4a: SUBMIT JOKE FOR MODERATION ===
 curl -s -X POST http://$KONG_IP/submit \
@@ -444,16 +484,17 @@ cd /Users/asifibrahim/Desktop/Distributed_system/co3404-option2 && bash deploy.s
 ### VMs and Private IPs
 | VM | Azure Name | Public IP | Private IP | Services |
 |----|-----------|-----------|------------|----------|
-| VM1 | joke-vm | 20.251.8.242 | 10.0.0.4 | joke-app (4000), etl-app (4001), MongoDB (4002) |
-| VM2 | submit-vm | 51.120.83.211 | 10.0.0.5 | submit-app (4200), moderate-app (4100), RabbitMQ (5672/15672) |
-| VM3 | kong-vm | 20.100.190.184 | 10.0.0.6 | Kong Gateway (80→8000, 443→8443) |
+| VM1 | joke-vm | 20.100.185.233 | 10.0.0.4 | joke-app (4000), etl-app (4001), MongoDB (4002) |
+| VM2 | submit-vm | 20.100.186.237 | 10.0.0.5 | submit-app (4200), moderate-app (4100), RabbitMQ (5672/15672) |
+| VM3 | kong-vm | 20.100.186.201 | 10.0.0.6 | Kong Gateway (80→8000, 443→8443) |
 
 ### Kong Routes
-| Path | Service | Backend |
-|------|---------|---------|
-| /joke, /joke-types | joke-service | 10.0.0.4:4000 |
-| /submit, /submit-types, /docs | submit-service | 10.0.0.5:4200 |
-| /moderate, /moderated, /moderate-types, /auth-status, /login, /logout, /callback, / | moderate-service | 10.0.0.5:4100 |
+| Path | Service | Backend | Rate Limited |
+|------|---------|---------|:---:|
+| /joke | joke-service | 10.0.0.4:4000 | Yes (5/min) |
+| /joke-app, /joke-types | joke-app-ui-service | 10.0.0.4:4000 | No |
+| /submit, /submit-types, /docs, /submit-app | submit-service | 10.0.0.5:4200 | No |
+| /moderate, /moderated, /moderate-types, /auth-status, /login, /logout, /callback, / | moderate-service | 10.0.0.5:4100 | No |
 
 ### RabbitMQ Queues & Exchange
 | Name | Type | Purpose |

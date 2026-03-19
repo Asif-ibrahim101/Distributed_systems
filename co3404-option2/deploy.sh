@@ -2,9 +2,9 @@
 set -e
 
 SSH_OPTS="-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa"
-VM1="azureuser@20.251.8.242"
-VM2="azureuser@51.120.83.211"
-VM3="azureuser@20.100.190.184"
+VM1="azureuser@20.100.185.233"
+VM2="azureuser@20.100.186.237"
+VM3="azureuser@20.100.186.201"
 
 echo "Deploying to VM1 (Joke Service)..."
 scp $SSH_OPTS -r joke-microservice $VM1:~/

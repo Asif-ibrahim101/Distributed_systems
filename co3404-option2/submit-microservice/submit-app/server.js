@@ -152,8 +152,28 @@ app.get('/types', (req, res) => {
     }
 });
 
-// Alias for Kong routing — Kong forwards /submit-types → /submit-types on this server
-// The frontend uses /submit-types so it works through Kong's reverse proxy
+/**
+ * @openapi
+ * /submit-types:
+ *   get:
+ *     summary: Get all joke types (Kong alias)
+ *     description: >
+ *       Alias for /types used by the Kong API Gateway. Returns the same
+ *       cached joke types list. The frontend calls this endpoint when
+ *       accessed through Kong's reverse proxy.
+ *     responses:
+ *       200:
+ *         description: A list of joke types
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: string
+ *               example: ["general", "programming", "dad", "knock-knock"]
+ *       500:
+ *         description: Server error
+ */
 app.get('/submit-types', (req, res) => {
     try {
         const types = readCache();

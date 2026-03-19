@@ -309,22 +309,22 @@ resource "azurerm_linux_virtual_machine" "joke_vm" {
     ]
   }
 
-  # 2. Copy the joke microservice code to the VM
-  provisioner "file" {
-    source      = "../../joke-microservice"
-    destination = "/home/${self.admin_username}/joke-microservice"
+  # 2. Copy the joke microservice code to the VM (excluding node_modules)
+  provisioner "local-exec" {
+    command = "rsync -avz --exclude 'node_modules' --exclude '.DS_Store' -e 'ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa' ../../joke-microservice ${self.admin_username}@${azurerm_public_ip.joke_ip.ip_address}:/home/${self.admin_username}/"
   }
 
-  # 3. Start the containers (MongoDB profile)
+  # 3. Set correct .env for Azure deployment and start containers
   provisioner "remote-exec" {
     inline = [
       "cd /home/${self.admin_username}/joke-microservice",
+      "sed -i 's/RABBITMQ_IP=.*/RABBITMQ_IP=10.0.0.5/' .env",
       "sudo docker-compose --profile mongo up --build -d"
     ]
   }
 }
 
-# ----- SUBMIT VM (VM2: 10.0.0.5) -----
+# ----- SUBMIT VM (VM2: 10.0.0.5) — also hosts RabbitMQ and Moderate -----
 
 resource "azurerm_public_ip" "submit_ip" {
   name                = "submit-vm-ip"
@@ -371,6 +371,30 @@ resource "azurerm_network_security_group" "submit_nsg" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "4100"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowRabbitMQ"
+    priority                   = 1003
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "5672"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowRabbitMQAdmin"
+    priority                   = 1004
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "15672"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
@@ -446,155 +470,29 @@ resource "azurerm_linux_virtual_machine" "submit_vm" {
     ]
   }
 
-  # 2. Copy the submit and moderate microservice code to the VM
-  provisioner "file" {
-    source      = "../../submit-microservice"
-    destination = "/home/${self.admin_username}/submit-microservice"
+  # 2. Copy RabbitMQ, submit, and moderate microservice code (excluding node_modules)
+  provisioner "local-exec" {
+    command = "rsync -avz --exclude 'node_modules' --exclude '.DS_Store' -e 'ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa' ../../rabbitmq ../../submit-microservice ../../moderate-microservice ${self.admin_username}@${azurerm_public_ip.submit_ip.ip_address}:/home/${self.admin_username}/"
   }
 
-  provisioner "file" {
-    source      = "../../moderate-microservice"
-    destination = "/home/${self.admin_username}/moderate-microservice"
-  }
-
-  # 3. Start the containers
+  # 3. Set correct .env values for Azure and start all containers
   provisioner "remote-exec" {
     inline = [
+      # Fix submit .env for Azure IPs
       "cd /home/${self.admin_username}/submit-microservice",
-      "sudo docker-compose up --build -d",
+      "sed -i 's/VM1_PRIVATE_IP=.*/VM1_PRIVATE_IP=10.0.0.4/' .env",
+      "sed -i 's/RABBITMQ_IP=.*/RABBITMQ_IP=10.0.0.5/' .env",
+      # Fix moderate .env for Azure IPs and Kong base URL
       "cd /home/${self.admin_username}/moderate-microservice",
-      "sudo docker-compose up --build -d"
-    ]
-  }
-}
-
-# ----- RABBITMQ VM (VM5: 10.0.0.8) -----
-
-resource "azurerm_network_security_group" "rabbitmq_nsg" {
-  name                = "rabbitmq-vm-nsg"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-
-  security_rule {
-    name                       = "AllowSSH"
-    priority                   = 1000
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "AllowRabbitMQ"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "5672"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "AllowRabbitMQAdmin"
-    priority                   = 1002
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "15672"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-}
-
-resource "azurerm_network_interface" "rabbitmq_nic" {
-  name                = "rabbitmq-vm-nic"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = data.azurerm_subnet.existing.id
-    private_ip_address_allocation = "Static"
-    private_ip_address            = "10.0.0.8"
-  }
-}
-
-resource "azurerm_network_interface_security_group_association" "rabbitmq_nsg_assoc" {
-  network_interface_id      = azurerm_network_interface.rabbitmq_nic.id
-  network_security_group_id = azurerm_network_security_group.rabbitmq_nsg.id
-}
-
-resource "azurerm_linux_virtual_machine" "rabbitmq_vm" {
-  name                = "rabbitmq-vm"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  size                = var.vm_size
-  admin_username      = var.admin_username
-
-  network_interface_ids = [
-    azurerm_network_interface.rabbitmq_nic.id
-  ]
-
-  admin_ssh_key {
-    username   = var.admin_username
-    public_key = file("~/.ssh/id_rsa.pub")
-  }
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
-    version   = "latest"
-  }
-
-  # Continuous Deployment Provisioning
-  connection {
-    type                 = "ssh"
-    user                 = self.admin_username
-    private_key          = file("~/.ssh/id_rsa")
-    host                 = self.private_ip_address
-    bastion_host         = azurerm_linux_virtual_machine.kong_vm.public_ip_address
-    bastion_user         = var.admin_username
-    bastion_private_key  = file("~/.ssh/id_rsa")
-  }
-
-  # 1. Install Docker
-  provisioner "remote-exec" {
-    inline = [
-      "sudo apt-get update",
-      "sudo apt-get install -y ca-certificates curl gnupg lsb-release unzip",
-      "sudo mkdir -m 0755 -p /etc/apt/keyrings",
-      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg || true",
-      "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
-      "sudo apt-get update",
-      "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-compose",
-      "sudo usermod -aG docker ${self.admin_username}",
-      "sudo chmod 666 /var/run/docker.sock || true"
-    ]
-  }
-
-  # 2. Copy the microservice code to the VM
-  provisioner "file" {
-    source      = "../../rabbitmq"
-    destination = "/home/${self.admin_username}/rabbitmq"
-  }
-
-  # 3. Start the container
-  provisioner "remote-exec" {
-    inline = [
-      "cd /home/${self.admin_username}/rabbitmq",
-      "sudo docker-compose up -d"
+      "sed -i 's/RABBITMQ_IP=.*/RABBITMQ_IP=10.0.0.5/' .env",
+      "sed -i 's|BASE_URL=.*|BASE_URL=http://${azurerm_public_ip.kong_ip.ip_address}|' .env",
+      # Start RabbitMQ first (other services depend on it)
+      "cd /home/${self.admin_username}/rabbitmq && sudo docker-compose up -d",
+      # Wait for RabbitMQ to be ready
+      "sleep 15",
+      # Start submit and moderate services
+      "cd /home/${self.admin_username}/submit-microservice && sudo docker-compose up --build -d",
+      "cd /home/${self.admin_username}/moderate-microservice && sudo docker-compose up --build -d"
     ]
   }
 }
@@ -607,6 +505,17 @@ output "submit_vm_public_ip" {
   value = azurerm_public_ip.submit_ip.ip_address
 }
 
-output "rabbitmq_vm_private_ip" {
-  value = azurerm_linux_virtual_machine.rabbitmq_vm.private_ip_address
+output "kong_public_ip" {
+  description = "Kong VM public IP address"
+  value       = azurerm_public_ip.kong_ip.ip_address
+}
+
+output "kong_private_ip" {
+  description = "Kong VM private IP address"
+  value       = var.private_ip
+}
+
+output "ssh_command" {
+  description = "SSH command to connect to Kong VM"
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.kong_ip.ip_address}"
 }

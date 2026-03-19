@@ -54,3 +54,26 @@ Now, Kong acts as a single point of entry (a reverse proxy):
 ### 🔒 Security & Reliability Upgrades
 - **HTTPS Encryption:** We generated and deployed a secure TLS certificate using `mkcert`. This enables HTTPS, ensuring all traffic between the user's browser and the Kong Gateway is encrypted.
 - **Spam Protection:** We added a rate-limiting plugin in Kong to enforce a maximum of 5 requests per minute on the joke reading endpoints. This protects your backend databases from being overwhelmed or crashed by spam requests (a Denial of Service attack).
+
+## 5. Joke Moderation (Option 4: Moderate Service + Fanout Exchange)
+
+We added a **moderation step** so submitted jokes don't go directly into the database — a human reviewer approves or rejects them first.
+
+### How Moderation Works
+- When a user submits a joke, it goes into the `SUBMITTED_JOKES` queue (same as before).
+- A **moderator** opens the Moderate App (protected by **Auth0 login**). The UI polls the queue every 1 second.
+- The moderate service uses `channel.get()` (pull-based) to fetch one joke at a time from the queue.
+- The moderator can **edit** the joke's setup, punchline, and type before deciding.
+- **Approve** → joke is published to the `MODERATED_JOKES` queue → ETL picks it up and inserts into the database.
+- **Reject** → joke is discarded (acknowledged but not forwarded).
+
+### Type Synchronisation (Fanout Exchange)
+When the ETL service creates a new joke type, it publishes an event to a `type_update` **fanout exchange**. This broadcasts the updated type list to all subscribed services (submit-app and moderate-app), which update their local file-based caches. This means every service always has an up-to-date type list without needing to call the joke service directly.
+
+## 6. Dual Database Support (MongoDB)
+
+The joke and ETL services support both **MySQL** and **MongoDB**. A database adapter pattern (`db/index.js`) selects the engine based on the `DB_TYPE` environment variable. The MongoDB adapter emulates the MySQL `db.query()` interface using MongoDB aggregation pipelines, so the same application code works with either database without changes. The Azure deployment uses MongoDB.
+
+## 7. Continuous Deployment (Terraform Provisioners)
+
+The initial deployment is **fully automated** — running `terraform apply` creates all Azure VMs, installs Docker on each one, copies the project files via SSH, and starts all containers. Zero manual steps are required. For subsequent code updates, the `deploy.sh` script automates redeployment via SCP and SSH.

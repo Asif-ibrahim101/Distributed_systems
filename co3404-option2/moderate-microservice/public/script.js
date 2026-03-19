@@ -153,6 +153,9 @@ rejectBtn.addEventListener('click', () => {
 });
 
 // Initialize
-checkAuth();
-loadTypes();
-startPolling();
+async function init() {
+    await checkAuth();
+    await loadTypes();
+    startPolling();
+}
+init();

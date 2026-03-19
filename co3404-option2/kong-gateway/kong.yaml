@@ -16,13 +16,6 @@ services:
         protocols:
           - https
           - http
-      - name: joke-types-route
-        paths:
-          - /joke-types
-        strip_path: false
-        protocols:
-          - https
-          - http
     plugins:
       - name: rate-limiting
         config:
@@ -39,6 +32,13 @@ services:
         paths:
           - /joke-app
         strip_path: true
+        protocols:
+          - https
+          - http
+      - name: joke-types-route
+        paths:
+          - /joke-types
+        strip_path: false
         protocols:
           - https
           - http
