@@ -84,7 +84,6 @@ async function getJoke() {
 
 // Refresh types every time the dropdown is interacted with
 typeSelect.addEventListener('focus', loadTypes);
-typeSelect.addEventListener('click', loadTypes);
 
 // Fetch joke on button click
 getJokeBtn.addEventListener('click', getJoke);

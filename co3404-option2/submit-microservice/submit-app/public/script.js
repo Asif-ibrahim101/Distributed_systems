@@ -15,11 +15,14 @@ async function loadTypes() {
         const res = await fetch('/submit-types');
         const types = await res.json();
 
+        // Deduplicate types
+        const uniqueTypes = [...new Set(types)];
+
         const currentValue = typeSelect.value;
 
         // Rebuild dropdown options
         typeSelect.innerHTML = '<option value="">-- Select a type --</option>';
-        types.forEach(type => {
+        uniqueTypes.forEach(type => {
             const option = document.createElement('option');
             option.value = type;
             option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
@@ -108,9 +111,8 @@ function showFeedback(message, type) {
     }
 }
 
-// Refresh types every time the dropdown is interacted with
+// Refresh types when the dropdown receives focus
 typeSelect.addEventListener('focus', loadTypes);
-typeSelect.addEventListener('click', loadTypes);
 
 // Load types on initial page load
 loadTypes();

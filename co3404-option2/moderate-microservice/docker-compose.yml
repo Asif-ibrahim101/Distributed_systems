@@ -6,7 +6,7 @@ services:
     ports:
       - "4100:3100"
     environment:
-      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_IP}:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
       AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
@@ -15,13 +15,12 @@ services:
     volumes:
       - types-cache:/data
     networks:
-      - moderate-network
+      - shared-network
     restart: unless-stopped
 
 volumes:
   types-cache:
 
-
 networks:
-  moderate-network:
-    driver: bridge
+  shared-network:
+    external: true

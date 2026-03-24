@@ -31,8 +31,9 @@ const adapter = {
 
         // Simulate: 'SELECT type FROM types ORDER BY type'
         if (queryString.includes('SELECT type FROM types')) {
-            const types = await db.collection('types').find({}, { projection: { type: 1, _id: 0 } }).sort({ type: 1 }).toArray();
-            return [types];
+            const types = await db.collection('types').distinct('type');
+            types.sort();
+            return [types.map(t => ({ type: t }))];
         }
 
         // Simulate: 'SELECT id FROM types WHERE type = ?'

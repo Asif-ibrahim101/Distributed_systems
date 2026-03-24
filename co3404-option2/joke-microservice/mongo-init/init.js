@@ -1,13 +1,18 @@
 db = db.getSiblingDB('jokedb');
 
-db.types.insertMany([
-    { type: 'general' },
-    { type: 'programming' },
-    { type: 'dad' },
-    { type: 'knock-knock' }
-]);
+// Unique index prevents duplicate types on re-runs
+db.types.createIndex({ type: 1 }, { unique: true });
 
-db.jokes.insertMany([
+// Upsert each type so re-running the init script is safe
+['general', 'programming', 'dad', 'knock-knock'].forEach(t => {
+    db.types.updateOne({ type: t }, { $setOnInsert: { type: t } }, { upsert: true });
+});
+
+// Unique index on setup prevents duplicate jokes on re-runs
+db.jokes.createIndex({ setup: 1 }, { unique: true });
+
+// Upsert each joke so re-running is safe
+var jokes = [
     { setup: 'What do you call a fake noodle?', punchline: 'An impasta.', type: 'general' },
     { setup: 'Why did the scarecrow win an award?', punchline: 'Because he was outstanding in his field.', type: 'general' },
     { setup: 'What do you call a bear with no teeth?', punchline: 'A gummy bear.', type: 'general' },
@@ -31,4 +36,8 @@ db.jokes.insertMany([
     { setup: 'Knock knock. Who\'s there? Nobel.', punchline: 'Nobel who? Nobel, that\'s why I knocked!', type: 'knock-knock' },
     { setup: 'Knock knock. Who\'s there? Atch.', punchline: 'Atch who? Bless you!', type: 'knock-knock' },
     { setup: 'Knock knock. Who\'s there? Tank.', punchline: 'Tank who? You\'re welcome!', type: 'knock-knock' }
-]);
+];
+
+jokes.forEach(j => {
+    db.jokes.updateOne({ setup: j.setup }, { $setOnInsert: j }, { upsert: true });
+});

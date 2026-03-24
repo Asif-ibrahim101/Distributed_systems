@@ -277,3 +277,36 @@ button:active {
         transform: translateY(0);
     }
 }
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    top: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    padding: 1rem 2rem;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: white;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    backdrop-filter: blur(8px);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast.toast-approve {
+    background: var(--approve-gradient);
+    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+}
+
+.toast.toast-reject {
+    background: var(--reject-gradient);
+    box-shadow: 0 8px 30px rgba(239, 68, 68, 0.4);
+}

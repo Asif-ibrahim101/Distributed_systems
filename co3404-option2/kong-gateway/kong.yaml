@@ -80,6 +80,13 @@ services:
   - name: moderate-service
     url: http://10.0.0.5:4100
     routes:
+      - name: moderate-app-ui
+        paths:
+          - /moderate-app
+        strip_path: true
+        protocols:
+          - https
+          - http
       - name: moderate-route
         paths:
           - /moderate

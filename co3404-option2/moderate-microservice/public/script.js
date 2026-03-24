@@ -13,6 +13,13 @@ const loginLink = document.getElementById('login-link');
 const logoutLink = document.getElementById('logout-link');
 
 let pollingInterval = null;
+const toast = document.getElementById('toast');
+
+function showToast(action) {
+    toast.textContent = action === 'approve' ? 'Approved!' : 'Rejected!';
+    toast.className = `toast toast-${action} show`;
+    setTimeout(() => { toast.classList.remove('show'); }, 1500);
+}
 
 async function checkAuth() {
     try {
@@ -129,7 +136,9 @@ async function submitModeration(action) {
         });
 
         if (res.ok) {
-            // Success - immediately look for the next joke
+            showToast(action);
+            // Brief delay so the toast is visible before transitioning
+            await new Promise(r => setTimeout(r, 800));
             startPolling();
         } else {
             const data = await res.json();

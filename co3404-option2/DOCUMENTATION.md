@@ -552,25 +552,25 @@ The `deploy.sh` script automates code updates via SCP and SSH:
 For local testing, `.env` files use `host.docker.internal` instead of Azure private IPs. This lets containers in separate Docker Compose stacks reach each other via the host machine.
 
 ```bash
-# Start RabbitMQ first
+# Start RabbitMQ first (creates the shared-network)
 cd co3404-option2/rabbitmq
-docker-compose up -d
+docker compose up -d
 
 # Start submit microservice
 cd ../submit-microservice
-docker-compose up --build -d
+docker compose up --build -d
 
 # Start moderate microservice
 cd ../moderate-microservice
-docker-compose up --build -d
+docker compose up --build -d
 
-# Start joke microservice (with MongoDB)
+# Start joke microservice (MongoDB starts automatically)
 cd ../joke-microservice
-docker-compose --profile mongo up --build -d
+docker compose up --build -d
 
 # Start Kong gateway (routes will fail locally unless kong.yaml IPs are updated)
 cd ../kong-gateway
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Ports:

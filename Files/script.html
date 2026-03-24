@@ -1,0 +1,513 @@
+<h1 id="co3404-option-4-video-script-option-by-option-walkthrough">CO3404 Option 4 — Video Script (Option-by-Option Walkthrough)</h1>
+<h1 id="target-14-15-minutes">Target: 14-15 minutes</h1>
+<hr />
+<h2 id="pre-recording-setup">PRE-RECORDING SETUP</h2>
+<h3 id="terminal-pre-set-variables">Terminal — pre-set variables:</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="va">SSH_OPTS</span><span class="op">=</span><span class="st">&quot;-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa&quot;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="va">VM1</span><span class="op">=</span><span class="st">&quot;azureuser@20.100.187.137&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="va">VM2</span><span class="op">=</span><span class="st">&quot;azureuser@51.120.78.45&quot;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="va">VM3</span><span class="op">=</span><span class="st">&quot;azureuser@20.100.192.182&quot;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="va">KONG_IP</span><span class="op">=</span><span class="st">&quot;20.100.192.182&quot;</span></span></code></pre></div>
+<h3 id="browser-tabs-open-all-through-kong-single-entry-point">Browser tabs open (all through Kong — single entry point):</h3>
+<ol type="1">
+<li>Azure Portal — co3404-rg resource group</li>
+<li>Joke App UI — <code>http://20.100.192.182/joke-app/</code></li>
+<li>Submit App UI — <code>http://20.100.192.182/submit-app/</code></li>
+<li>Swagger Docs — <code>http://20.100.192.182/docs</code></li>
+<li>Moderate App UI — <code>http://20.100.192.182/moderate-app</code></li>
+<li>RabbitMQ Console — <code>http://51.120.78.45:15672</code></li>
+</ol>
+<h3 id="ssh-sessions-ready-in-separate-terminal-tabs">SSH sessions ready in separate terminal tabs:</h3>
+<ul>
+<li>Tab for VM1, Tab for VM2, Tab for VM3</li>
+</ul>
+<hr />
+<h2 id="introduction">0:00 – 0:30 | INTRODUCTION</h2>
+<p><strong>[Screen: Azure portal showing VMs]</strong></p>
+<p>"Hi, I’m Asif. This is my CO3404 Distributed Systems assignment. I’ve implemented all four options building on top of each other, targeting an Exceptional First.</p>
+<p>I’m going to walk through each option — what was required, what I built, and demonstrate it working. The system is running live on Azure right now across three VMs — joke-vm, submit-vm, and kong-vm — all in the co3404-rg resource group in the norwayeast region.</p>
+<p>Let me quickly confirm everything is running."</p>
+<p><strong>[Paste in terminal:]</strong></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker ps --format &#39;table {{.Names}}\t{{.Status}}&#39;&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM2</span> <span class="st">&quot;sudo docker ps --format &#39;table {{.Names}}\t{{.Status}}&#39;&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM3</span> <span class="st">&quot;sudo docker ps --format &#39;table {{.Names}}\t{{.Status}}&#39;&quot;</span></span></code></pre></div>
+<p>“All containers are up. Let’s start from Option 1.”</p>
+<hr />
+<h2 id="option-1-two-apps-one-database-3.5-minutes">0:30 – 4:00 | OPTION 1 — TWO APPS, ONE DATABASE (3.5 minutes)</h2>
+<p><strong>[Screen: VS Code showing co3404-option1/ folder structure briefly]</strong></p>
+<p><strong>OPEN: <code>co3404-option1/docker-compose.yml</code></strong> — show the three services (joke-app, submit-app, mysql) on one network</p>
+<p>"Option 1 required a basic distributed system — two separate Express applications sharing a MySQL database, all running in Docker containers.</p>
+<p>I built a <strong>Joke app</strong> on port 3000 and a <strong>Submit app</strong> on port 3200, with MySQL as the shared database. All three run in Docker containers via a single docker-compose file on one Docker network. The Joke app is exposed on port 4000 and the Submit app on port 4200."</p>
+<h3 id="joke-app-demo">Joke App Demo</h3>
+<p><strong>OPEN: <code>co3404-option1/joke-app/server.js</code></strong> — briefly show the GET /types and GET /joke/:type endpoints before switching to browser</p>
+<p><strong>[Switch to browser: Joke App UI through Kong]</strong></p>
+<p>"Here’s the Joke app. The requirements said the dropdown must be populated dynamically from the database — so every time I click this dropdown, it calls GET /types which queries the database for all available joke types. No hardcoded values.</p>
+<p>I’ll select ‘programming’ and click Get Joke."</p>
+<p><strong>[Click — show setup appearing, then punchline after 3 seconds]</strong></p>
+<p>"The setup appears immediately. Three seconds later, the punchline reveals — that was a specific requirement. Each click fetches a different random joke. The API uses ORDER BY RAND() LIMIT for random selection with MySQL, or the $sample aggregation pipeline with MongoDB.</p>
+<p>The assignment also required the API to support returning multiple jokes. Let me show that."</p>
+<p><strong>[Switch to terminal, paste:]</strong></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sk</span> https://<span class="va">$KONG_IP</span>/joke/programming<span class="pp">?</span>count=3 <span class="kw">|</span> <span class="ex">python3</span> <span class="at">-m</span> json.tool</span></code></pre></div>
+<p>“Three random programming jokes returned as JSON. The UI only shows one, but the API is designed to be reusable — for example, someone printing jokes on Christmas crackers could request 50 at once.”</p>
+<h3 id="submit-app-demo">Submit App Demo</h3>
+<p><strong>OPEN: <code>co3404-option1/submit-app/server.js</code></strong> — briefly show POST /submit endpoint and validation logic</p>
+<p><strong>[Switch to browser: Submit App UI]</strong></p>
+<p>“The Submit app lets users enter a new joke. The requirements specified: a setup field, a punchline field, a dropdown for type selection populated from the database, an option to add a new type, a submit button that sends all data at once, and client-side validation preventing empty submissions.”</p>
+<p><strong>[Show: try to submit with empty fields — validation prevents it]</strong></p>
+<p>“I can’t submit with empty fields — the validation catches it. Let me fill in a joke and submit.”</p>
+<p><strong>[Fill in a joke, submit, show success feedback]</strong></p>
+<h3 id="swagger-documentation">Swagger Documentation</h3>
+<p><strong>OPEN: <code>co3404-option2/submit-microservice/submit-app/swagger.js</code></strong> — show the Swagger spec definition before switching to the live docs</p>
+<p><strong>[Switch to browser: Swagger docs at http://KONG_IP/docs]</strong></p>
+<p>“The assignment required OpenAPI documentation at GET /docs with interactive testing. Here it is — all endpoints documented with request and response schemas. I can test them directly from here.”</p>
+<p><strong>[Quickly test GET /submit-types from Swagger]</strong></p>
+<h3 id="database-structure">Database Structure</h3>
+<p><strong>OPEN: <code>co3404-option1/db-init/init.sql</code></strong> — show the CREATE TABLE statements, foreign key, and UNIQUE constraint</p>
+<p><strong>OPEN: <code>co3404-option1/joke-app/db.js</code></strong> — show the mysql2 connection pool and parameterised queries</p>
+<p>"The database has two tables — types and jokes — with a foreign key relationship. The types table has a UNIQUE constraint preventing duplicates. Both apps use mysql2 connection pools with parameterised queries to prevent SQL injection.</p>
+<p>The data lives on a Docker persistent volume, so it survives container restarts."</p>
+<h3 id="resilience">Resilience</h3>
+<p><strong>OPEN: <code>co3404-option1/docker-compose.yml</code></strong> — point out the separate service definitions showing they only share the <code>joke-network</code> and database</p>
+<p>“The key non-functional requirement for Option 1 was service independence. If I stop the submit app, the joke app keeps working. If I stop the joke app, submit keeps working. They only share the database — they don’t depend on each other.”</p>
+<hr />
+<h2 id="option-2-microservices-rabbitmq-3.5-minutes">4:00 – 7:30 | OPTION 2 — MICROSERVICES + RABBITMQ (3.5 minutes)</h2>
+<p><strong>[Screen: brief architecture diagram or whiteboard]</strong></p>
+<p><strong>OPEN: <code>co3404-option2/submit-microservice/submit-app/server.js</code></strong> — scroll to the RabbitMQ <code>channel.sendToQueue('SUBMITTED_JOKES', ...)</code> call to show the publish logic</p>
+<p>"Option 2 required splitting the system across two Azure VMs and introducing asynchronous messaging. Three new things were added: RabbitMQ as a message broker, an ETL service, and a types file cache.</p>
+<p>The fundamental change is that the <strong>submit app no longer writes to the database</strong>. Instead, it publishes messages to a RabbitMQ queue called SUBMITTED_JOKES. The ETL service on the other VM consumes those messages and writes to the database. This decouples the two microservices."</p>
+<h3 id="message-queue-demo">Message Queue Demo</h3>
+<p>“Let me demonstrate the message flow. I’ll submit a joke.”</p>
+<p><strong>[Switch to browser: Submit UI — submit a joke]</strong></p>
+<p>“The joke has been published to the RabbitMQ queue.”</p>
+<p><strong>[Switch to browser: RabbitMQ Console at http://51.120.78.45:15672]</strong></p>
+<p>"Here in the RabbitMQ management console, you can see the queues. The message is waiting to be consumed.</p>
+<p>The requirements specified that queues must be <strong>durable</strong> — they survive broker restarts — and messages must be <strong>persistent</strong> — written to disk, not just memory. The ETL acknowledges each message only after successfully writing to the database. If the ETL crashes before acknowledging, the message stays on the queue and gets redelivered. No data loss."</p>
+<h3 id="etl-service">ETL Service</h3>
+<p><strong>OPEN: <code>co3404-option2/joke-microservice/etl/etl.js</code></strong> — show the <code>channel.consume('MODERATED_JOKES', ...)</code> handler, the DB insert logic, and <code>channel.ack(msg)</code></p>
+<p><strong>[Switch to terminal:]</strong></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker logs etl-app --tail 10&quot;</span></span></code></pre></div>
+<p>“Here are the ETL logs — you can see it consuming messages from the MODERATED_JOKES queue, inserting types if they’re new, and inserting jokes. The ETL runs on its own Node.js server in a Docker container alongside the joke app and database on VM1.”</p>
+<h3 id="types-cache">Types Cache</h3>
+<p><strong>OPEN: <code>co3404-option2/submit-microservice/submit-app/server.js</code></strong> — scroll to the fanout exchange subscription and the <code>fs.writeFileSync('/data/types-cache.json', ...)</code> call</p>
+<p>"The other key change was the types cache. Since the submit app can’t access the database anymore, it needs another way to populate the types dropdown. The submit service subscribes to a type_update fanout exchange on RabbitMQ. When the ETL inserts a new type, it publishes an event to that exchange. The submit service receives the event and writes the types to a JSON cache file at /data/types-cache.json on a Docker volume. If RabbitMQ is down, the cache file is used as fallback — it even seeds with default types on first startup.</p>
+<p>This ensured the dropdown always worked, even during outages."</p>
+<h3 id="resilience-demo">Resilience Demo</h3>
+<p>“Let me demonstrate the resilience improvement. I’ll stop the entire joke microservice on VM1.”</p>
+<p><strong>[Paste in terminal:]</strong></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;cd joke-microservice &amp;&amp; sudo docker compose --profile mongo down&quot;</span></span></code></pre></div>
+<p>“VM1 is completely down. But the Submit app still works.”</p>
+<p><strong>[Switch to Submit UI — submit a joke, show it works]</strong></p>
+<p>“The joke is on the RabbitMQ queue, waiting. The types dropdown works from the cache file.”</p>
+<p><strong>[Switch to RabbitMQ Console — show message count]</strong></p>
+<p>“Message is queued. Now I’ll bring VM1 back.”</p>
+<p><strong>[Paste:]</strong></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;cd joke-microservice &amp;&amp; sudo docker compose --profile mongo up -d&quot;</span></span></code></pre></div>
+<p><strong>[Wait a few seconds, check ETL logs:]</strong></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker logs etl-app --tail 5&quot;</span></span></code></pre></div>
+<p>“The ETL reconnected to RabbitMQ and processed the queued messages automatically. The system self-heals.”</p>
+<hr />
+<h2 id="option-3-kong-api-gateway-terraform-2-minutes">7:30 – 9:30 | OPTION 3 — KONG API GATEWAY + TERRAFORM (2 minutes)</h2>
+<p><strong>[Screen: Kong config or architecture diagram]</strong></p>
+<p>"Option 3 required three things: an API gateway providing a single entry point, HTTPS encryption, and Terraform infrastructure as code.</p>
+<p>I implemented <strong>Kong</strong> as a reverse proxy on VM3. Instead of users accessing multiple IPs and ports, everything goes through one URL. Kong runs in DB-less declarative mode — all configuration is in a single kong.yaml file."</p>
+<h3 id="single-entry-point">Single Entry Point</h3>
+<p><strong>OPEN: <code>co3404-option2/kong-gateway/kong.yaml</code></strong> — keep this open for the whole Kong section, scroll through services and routes as you explain</p>
+<p>“Let me show the kong.yaml.”</p>
+<p>“Each service has a URL pointing to the private IP of its VM. Routes map paths to services — /joke goes to the rate-limited joke-service on VM1 at 10.0.0.4:4000, /joke-app and /joke-types go to a separate non-rate-limited joke-app-ui-service on the same backend, /submit, /submit-types, and /submit-app go to the submit-service on VM2 at 10.0.0.5:4200, /moderate, /moderated, and the auth routes go to the moderate-service on VM2 at 10.0.0.5:4100. The microservices are hidden behind the gateway.”</p>
+<h3 id="https">HTTPS</h3>
+<p><strong>OPEN: <code>co3404-option2/kong-gateway/docker-compose.yml</code></strong> — show the KONG_SSL_CERT / KONG_SSL_CERT_KEY env vars and the volume mount for certs</p>
+<p><strong>[Switch to browser — show HTTPS access]</strong></p>
+<p>“All traffic is encrypted with HTTPS. I generated a TLS certificate using mkcert and deployed it to the Kong VM’s filesystem — configured via KONG_SSL_CERT and KONG_SSL_CERT_KEY environment variables in docker-compose.yml, mounted as a Docker volume, not baked into the image. That was a specific requirement.”</p>
+<h3 id="rate-limiting">Rate Limiting</h3>
+<p>“I applied the rate-limiting plugin to the joke API routes — set to 5 requests per minute to make it easy to demonstrate. Note that the joke-types endpoint is on a separate non-rate-limited service so the dropdowns always work.”</p>
+<p><strong>[Paste in terminal:]</strong></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="va">$(</span><span class="fu">seq</span> 1 10<span class="va">)</span><span class="kw">;</span> <span class="cf">do</span> <span class="bu">echo</span> <span class="st">&quot;Request </span><span class="va">$i</span><span class="st">: </span><span class="va">$(</span><span class="ex">curl</span> <span class="at">-s</span> <span class="at">-o</span> /dev/null <span class="at">-w</span> <span class="st">&#39;%{http_code}&#39;</span> http://<span class="va">$KONG_IP</span>/joke/general<span class="va">)</span><span class="st">&quot;</span><span class="kw">;</span> <span class="cf">done</span></span></code></pre></div>
+<p>“Requests 1 through 5 return 200. Then 429 — Too Many Requests. Kong blocks excessive traffic before it reaches the backend. The /joke-types endpoint isn’t rate-limited — I separated it into its own service so the dropdowns always load, even when the joke API is throttled.”</p>
+<h3 id="terraform">Terraform</h3>
+<p><strong>OPEN: <code>co3404-option2/kong-gateway/terraform/main.tf</code></strong> — scroll through data sources, VM resources, NICs with static IPs, and provisioner blocks</p>
+<p><strong>OPEN (secondary): <code>co3404-option2/kong-gateway/terraform/outputs.tf</code></strong> — briefly show the output variables</p>
+<p>“The infrastructure is managed using Terraform. The main.tf uses data sources for existing infrastructure like the resource group and subnet, and resource blocks for creating VMs with public IPs, network security groups, and NICs — each with static private IPs on the shared VNet. Let me show the key parts.”</p>
+<p>“One <code>terraform apply</code> command creates all the VMs with the correct network config, public IP, and security group rules.”</p>
+<hr />
+<h2 id="option-4-everything-else-4-minutes">9:30 – 13:30 | OPTION 4 — EVERYTHING ELSE (4 minutes)</h2>
+<p><strong>[Screen: architecture diagram]</strong></p>
+<p>“Option 4 is the biggest upgrade. It required five new features: a Moderate microservice, Event-Carried State Transfer, dual database support, OIDC authentication, and a continuous deployment pipeline. I also polished all the UIs.”</p>
+<h3 id="a-moderate-microservice-1-minute">4a: Moderate Microservice (1 minute)</h3>
+<p><strong>OPEN: <code>co3404-option2/moderate-microservice/server.js</code></strong> — show the <code>channel.get('SUBMITTED_JOKES')</code> pull-based consume, and the <code>publishChannel.sendToQueue('MODERATED_JOKES', ...)</code> publish logic</p>
+<p>"The moderate app adds a human review step. In Options 2-3, jokes went straight from the SUBMITTED_JOKES queue to the ETL. Now they go through a moderator first.</p>
+<p>The message flow is: the submit app publishes to the SUBMITTED_JOKES queue, the moderate app pulls one joke at a time using channel.get() — that’s pull-based, not push-based, the moderator controls the pace — the moderator can edit the setup, punchline, or type, then approve or reject. Approved jokes go to the MODERATED_JOKES queue. The ETL now consumes from MODERATED_JOKES instead of SUBMITTED_JOKES.</p>
+<p>The moderate service uses two separate RabbitMQ channels — one for consuming from the submit queue and one for publishing to the moderated queue."</p>
+<p><strong>OPEN: <code>co3404-option2/moderate-microservice/public/script.js</code></strong> — briefly show the approve/reject fetch calls and the polling logic</p>
+<p><strong>[Switch to Moderate UI at http://KONG_IP/moderate-app — show a joke waiting]</strong></p>
+<p>“Here’s a joke waiting for review. The fields are editable. I can change the type from the dropdown or keep the submitted one. Approve sends it to the moderated queue with persistent delivery. Reject simply acknowledges and discards it.”</p>
+<p><strong>[Approve, show next joke auto-loading or ‘Waiting for jokes’ polling state]</strong></p>
+<p>“When no jokes are waiting, the UI shows this polling state — it checks every second.”</p>
+<h3 id="b-ecst-events-1-minute">4b: ECST Events (1 minute)</h3>
+<p><strong>OPEN: <code>co3404-option2/joke-microservice/etl/etl.js</code></strong> — scroll to the <code>channel.publish('type_update', '', ...)</code> fanout publish after inserting a new type</p>
+<p>"The Event-Carried State Transfer pattern is how types propagate across services. When the ETL inserts a new type into the database, it publishes a type_update event to a <strong>fanout exchange</strong> — that’s the key design choice. A regular queue delivers each message to one consumer, but a fanout exchange broadcasts to all bound queues.</p>
+<p>Both the submit service and the moderate service each have their own durable queue bound to this exchange. When a type_update event arrives, each service writes the updated types list to its local /data/types-cache.json file on a Docker volume.</p>
+<p>Let me demonstrate."</p>
+<p><strong>[Paste in terminal:]</strong></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-s</span> <span class="at">-X</span> POST http://<span class="va">$KONG_IP</span>/submit <span class="dt">\</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;type&quot;:&quot;astronomy&quot;,&quot;setup&quot;:&quot;How do astronomers organise a party?&quot;,&quot;punchline&quot;:&quot;They planet!&quot;,&quot;isNewType&quot;:true}&#39;</span></span></code></pre></div>
+<p><strong>[Switch to Moderate UI — approve the astronomy joke]</strong></p>
+<p><strong>[Check ETL logs:]</strong></p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker logs etl-app --tail 5&quot;</span></span></code></pre></div>
+<p>“ETL inserted the new type and published the type_update event. Now both dropdowns have ‘astronomy’ without any page refresh.”</p>
+<p><strong>[Show both Submit and Moderate dropdowns with the new type]</strong></p>
+<h3 id="c-dual-database-30-seconds">4c: Dual Database (30 seconds)</h3>
+<p><strong>OPEN: <code>co3404-option2/joke-microservice/joke-app/db/index.js</code></strong> — show the factory pattern that switches between adapters based on DB_TYPE</p>
+<p><strong>OPEN (secondary): <code>co3404-option2/joke-microservice/joke-app/db/mongo-adapter.js</code></strong> — briefly show the MongoDB adapter interface</p>
+<p><strong>OPEN (secondary): <code>co3404-option2/joke-microservice/docker-compose.yml</code></strong> — show the <code>--profile mysql</code> / <code>--profile mongo</code> service definitions</p>
+<p>"I support both MySQL and MongoDB, switchable via the DB_TYPE environment variable. Docker Compose profiles control which database container starts — <code>--profile mysql</code> starts MySQL, <code>--profile mongo</code> starts MongoDB. Only one runs at a time.</p>
+<p>The code uses a factory pattern in db/index.js — it checks DB_TYPE and returns either the MySQL or MongoDB adapter. Both adapters expose the same query interface so the rest of the application code doesn’t change at all."</p>
+<p><strong>[Show MongoDB data:]</strong></p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker exec joke-database-mongo mongosh jokedb --eval &#39;db.types.find().toArray()&#39;&quot;</span></span></code></pre></div>
+<p>“Currently running MongoDB. Switching is a one-line env change plus swapping the Docker Compose profile — the application code doesn’t change.”</p>
+<h3 id="d-oidc-authentication-30-seconds">4d: OIDC Authentication (30 seconds)</h3>
+<p><strong>OPEN: <code>co3404-option2/moderate-microservice/server.js</code></strong> — scroll to the <code>auth()</code> middleware config (authRequired: false) and the <code>checkAuth</code> middleware on POST /moderated</p>
+<p>“The moderate service requires authentication via Auth0 as my OIDC provider. I’m using the express-openid-connect library. The auth middleware is applied globally with authRequired set to false, so the moderate UI loads for everyone — but the POST /moderated endpoint is protected with a custom checkAuth middleware that returns 401 if the user isn’t authenticated.”</p>
+<p><strong>[If not already logged in, show the Auth0 redirect]</strong></p>
+<p>“Unauthenticated users get redirected to Auth0’s login page. Let me prove the API is protected too.”</p>
+<p><strong>[Paste:]</strong></p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-s</span> <span class="at">-o</span> /dev/null <span class="at">-w</span> <span class="st">&quot;HTTP Status: %{http_code}\n&quot;</span> <span class="at">-X</span> POST http://<span class="va">$KONG_IP</span>/moderated</span></code></pre></div>
+<p>“401 — unauthorized. The checkAuth middleware blocks unauthenticated requests before they reach the route handler.”</p>
+<h3 id="e-cd-pipeline-30-seconds">4e: CD Pipeline (30 seconds)</h3>
+<p><strong>OPEN: <code>co3404-option2/kong-gateway/terraform/main.tf</code></strong> — scroll to the provisioner blocks (remote-exec for Docker install, local-exec for rsync, remote-exec for docker compose up)</p>
+<p><strong>OPEN (secondary): <code>co3404-option2/deploy.sh</code></strong> — show the redeployment script with SCP + docker compose restart logic</p>
+<p>"The deployment is fully automated with Terraform provisioners. Each VM resource has three stages: a remote-exec provisioner installs Docker via SSH, a local-exec provisioner uses rsync to copy the project files excluding node_modules, and another remote-exec provisioner fixes the environment variables for Azure private IPs and runs docker compose up. One <code>terraform apply</code> — zero manual steps.</p>
+<p>There’s also a deploy.sh script that handles redeployment — it SCPs the updated code to each VM and restarts the containers."</p>
+<h3 id="f-polished-uis-15-seconds">4f: Polished UIs (15 seconds)</h3>
+<p><strong>OPEN: <code>co3404-option2/joke-microservice/joke-app/public/index.html</code></strong> — briefly flash to show the HTML structure, then switch to browser</p>
+<p><strong>[Quickly flash through all three UIs in browser]</strong></p>
+<p>“All three frontends share a consistent design — loading states, validation feedback, responsive layout, and smooth animations like the punchline fade-in. Professional and usable as the assignment required.”</p>
+<hr />
+<h2 id="overall-resilience-architecture-summary-1-minute">13:30 – 14:30 | OVERALL RESILIENCE + ARCHITECTURE SUMMARY (1 minute)</h2>
+<p>"Let me tie it all together. The progression from Option 1 to 4 follows a theme of <strong>progressive decoupling</strong>.</p>
+<p>Option 1 — apps share a database directly. Tightly coupled to the data store.</p>
+<p>Option 2 — a message queue decouples submit from the database. Loose coupling through asynchronous messaging.</p>
+<p>Option 3 — an API gateway decouples users from the backend topology. One URL for everything.</p>
+<p>Option 4 — events replace polling. Services don’t call each other at all — state changes propagate reactively through the fanout exchange.</p>
+<p>At each step, the system became more resilient. Right now, every service can fail independently and the others keep working. When services recover, queued messages are processed and event-driven caches resynchronise automatically. Nothing is lost — queues are durable, messages are persistent, and volumes preserve data."</p>
+<hr />
+<h2 id="conclusion-30-seconds">14:30 – 15:00 | CONCLUSION (30 seconds)</h2>
+<p>"To summarise — I’ve implemented all four options: a containerised two-app system with a shared MySQL database in Option 1, a microservice architecture with RabbitMQ and an ETL service in Option 2, an API gateway with HTTPS and Terraform in Option 3, and event-driven moderation with dual databases, OIDC authentication, and automated deployment in Option 4.</p>
+<p>The system is fully operational on Azure, resilient to failure, and every functional and non-functional requirement has been demonstrated. Thank you."</p>
+<hr />
+<h2 id="timing-summary">TIMING SUMMARY</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Section</th>
+<th>Duration</th>
+<th>Running Total</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Introduction</td>
+<td>0:30</td>
+<td>0:30</td>
+</tr>
+<tr class="even">
+<td><strong>OPTION 1</strong> — joke + submit + DB demo</td>
+<td>3:30</td>
+<td>4:00</td>
+</tr>
+<tr class="odd">
+<td><strong>OPTION 2</strong> — RabbitMQ + ETL + cache + resilience</td>
+<td>3:30</td>
+<td>7:30</td>
+</tr>
+<tr class="even">
+<td><strong>OPTION 3</strong> — Kong + HTTPS + rate limiting + Terraform</td>
+<td>2:00</td>
+<td>9:30</td>
+</tr>
+<tr class="odd">
+<td><strong>OPTION 4a</strong> — Moderate microservice</td>
+<td>1:00</td>
+<td>10:30</td>
+</tr>
+<tr class="even">
+<td><strong>OPTION 4b</strong> — ECST events demo</td>
+<td>1:00</td>
+<td>11:30</td>
+</tr>
+<tr class="odd">
+<td><strong>OPTION 4c</strong> — Dual database</td>
+<td>0:30</td>
+<td>12:00</td>
+</tr>
+<tr class="even">
+<td><strong>OPTION 4d</strong> — OIDC authentication</td>
+<td>0:30</td>
+<td>12:30</td>
+</tr>
+<tr class="odd">
+<td><strong>OPTION 4e</strong> — CD pipeline</td>
+<td>0:30</td>
+<td>13:00</td>
+</tr>
+<tr class="even">
+<td><strong>OPTION 4f</strong> — Polished UIs</td>
+<td>0:15</td>
+<td>13:15</td>
+</tr>
+<tr class="odd">
+<td>Architecture summary + resilience</td>
+<td>1:00</td>
+<td>14:15</td>
+</tr>
+<tr class="even">
+<td>Conclusion</td>
+<td>0:30</td>
+<td>14:45</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total: ~14:45</strong> — safely under 15 minutes with a small buffer.</p>
+<hr />
+<h2 id="cheat-sheet-all-commands-for-copy-paste">CHEAT SHEET — All commands for copy-paste</h2>
+<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># === VARIABLES ===</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="va">SSH_OPTS</span><span class="op">=</span><span class="st">&quot;-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa&quot;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="va">VM1</span><span class="op">=</span><span class="st">&quot;azureuser@20.100.187.137&quot;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="va">VM2</span><span class="op">=</span><span class="st">&quot;azureuser@51.120.78.45&quot;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="va">VM3</span><span class="op">=</span><span class="st">&quot;azureuser@20.100.192.182&quot;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="va">KONG_IP</span><span class="op">=</span><span class="st">&quot;20.100.192.182&quot;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co"># === SHOW ALL CONTAINERS ===</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker ps --format &#39;table {{.Names}}\t{{.Status}}&#39;&quot;</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM2</span> <span class="st">&quot;sudo docker ps --format &#39;table {{.Names}}\t{{.Status}}&#39;&quot;</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM3</span> <span class="st">&quot;sudo docker ps --format &#39;table {{.Names}}\t{{.Status}}&#39;&quot;</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 1: JOKE API TESTS ===</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sk</span> https://<span class="va">$KONG_IP</span>/joke-types <span class="kw">|</span> <span class="ex">python3</span> <span class="at">-m</span> json.tool</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-sk</span> <span class="st">&quot;https://</span><span class="va">$KONG_IP</span><span class="st">/joke/programming?count=3&quot;</span> <span class="kw">|</span> <span class="ex">python3</span> <span class="at">-m</span> json.tool</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 2: SUBMIT A JOKE ===</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-s</span> <span class="at">-X</span> POST http://<span class="va">$KONG_IP</span>/submit <span class="dt">\</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;type&quot;:&quot;dad&quot;,&quot;setup&quot;:&quot;What do you call a fake noodle?&quot;,&quot;punchline&quot;:&quot;An impasta!&quot;}&#39;</span></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 2: ETL LOGS ===</span></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker logs etl-app --tail 10&quot;</span></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 2: RESILIENCE — STOP VM1 ===</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;cd joke-microservice &amp;&amp; sudo docker compose --profile mongo down&quot;</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 2: RESILIENCE — START VM1 ===</span></span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;cd joke-microservice &amp;&amp; sudo docker compose --profile mongo up -d&quot;</span></span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 3: SHOW KONG CONFIG ===</span></span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a><span class="co"># Open in VS Code: co3404-option2/kong-gateway/kong.yaml</span></span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 3: RATE LIMITING </span><span class="al">TEST</span><span class="co"> ===</span></span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i <span class="kw">in</span> <span class="va">$(</span><span class="fu">seq</span> 1 10<span class="va">)</span><span class="kw">;</span> <span class="cf">do</span> <span class="bu">echo</span> <span class="st">&quot;Request </span><span class="va">$i</span><span class="st">: </span><span class="va">$(</span><span class="ex">curl</span> <span class="at">-s</span> <span class="at">-o</span> /dev/null <span class="at">-w</span> <span class="st">&#39;%{http_code}&#39;</span> http://<span class="va">$KONG_IP</span>/joke/general<span class="va">)</span><span class="st">&quot;</span><span class="kw">;</span> <span class="cf">done</span></span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 4a: SUBMIT JOKE FOR MODERATION ===</span></span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-s</span> <span class="at">-X</span> POST http://<span class="va">$KONG_IP</span>/submit <span class="dt">\</span></span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;type&quot;:&quot;dad&quot;,&quot;setup&quot;:&quot;Why did the scarecrow win an award?&quot;,&quot;punchline&quot;:&quot;He was outstanding in his field!&quot;}&#39;</span></span>
+<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 4b: SUBMIT JOKE WITH NEW TYPE (ECST DEMO) ===</span></span>
+<span id="cb13-43"><a href="#cb13-43" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-s</span> <span class="at">-X</span> POST http://<span class="va">$KONG_IP</span>/submit <span class="dt">\</span></span>
+<span id="cb13-44"><a href="#cb13-44" aria-hidden="true" tabindex="-1"></a>  <span class="at">-H</span> <span class="st">&quot;Content-Type: application/json&quot;</span> <span class="dt">\</span></span>
+<span id="cb13-45"><a href="#cb13-45" aria-hidden="true" tabindex="-1"></a>  <span class="at">-d</span> <span class="st">&#39;{&quot;type&quot;:&quot;astronomy&quot;,&quot;setup&quot;:&quot;How do astronomers organise a party?&quot;,&quot;punchline&quot;:&quot;They planet!&quot;,&quot;isNewType&quot;:true}&#39;</span></span>
+<span id="cb13-46"><a href="#cb13-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-47"><a href="#cb13-47" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 4b: CHECK ETL LOGS FOR TYPE EVENT ===</span></span>
+<span id="cb13-48"><a href="#cb13-48" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker logs etl-app --tail 5&quot;</span></span>
+<span id="cb13-49"><a href="#cb13-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-50"><a href="#cb13-50" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 4c: SHOW MONGODB DATA ===</span></span>
+<span id="cb13-51"><a href="#cb13-51" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker exec joke-database-mongo mongosh jokedb --eval &#39;db.types.find().toArray()&#39;&quot;</span></span>
+<span id="cb13-52"><a href="#cb13-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-53"><a href="#cb13-53" aria-hidden="true" tabindex="-1"></a><span class="co"># === OPTION 4d: </span><span class="al">TEST</span><span class="co"> AUTH PROTECTION ===</span></span>
+<span id="cb13-54"><a href="#cb13-54" aria-hidden="true" tabindex="-1"></a><span class="ex">curl</span> <span class="at">-s</span> <span class="at">-o</span> /dev/null <span class="at">-w</span> <span class="st">&quot;HTTP Status: %{http_code}\n&quot;</span> <span class="at">-X</span> POST http://<span class="va">$KONG_IP</span>/moderated</span>
+<span id="cb13-55"><a href="#cb13-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-56"><a href="#cb13-56" aria-hidden="true" tabindex="-1"></a><span class="co"># === DOCKER LOGS (DEBUGGING) ===</span></span>
+<span id="cb13-57"><a href="#cb13-57" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker logs joke-app --tail 20&quot;</span></span>
+<span id="cb13-58"><a href="#cb13-58" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM1</span> <span class="st">&quot;sudo docker logs etl-app --tail 20&quot;</span></span>
+<span id="cb13-59"><a href="#cb13-59" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM2</span> <span class="st">&quot;sudo docker logs submit-app --tail 20&quot;</span></span>
+<span id="cb13-60"><a href="#cb13-60" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM2</span> <span class="st">&quot;sudo docker logs moderate-app --tail 20&quot;</span></span>
+<span id="cb13-61"><a href="#cb13-61" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM2</span> <span class="st">&quot;sudo docker logs rabbitmq --tail 20&quot;</span></span>
+<span id="cb13-62"><a href="#cb13-62" aria-hidden="true" tabindex="-1"></a><span class="fu">ssh</span> <span class="va">$SSH_OPTS</span> <span class="va">$VM3</span> <span class="st">&quot;sudo docker logs kong --tail 20&quot;</span></span>
+<span id="cb13-63"><a href="#cb13-63" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-64"><a href="#cb13-64" aria-hidden="true" tabindex="-1"></a><span class="co"># === START ALL VMS (before recording) ===</span></span>
+<span id="cb13-65"><a href="#cb13-65" aria-hidden="true" tabindex="-1"></a><span class="ex">az</span> vm start <span class="at">-g</span> co3404-rg <span class="at">-n</span> joke-vm <span class="at">--no-wait</span> <span class="kw">&amp;&amp;</span> <span class="ex">az</span> vm start <span class="at">-g</span> co3404-rg <span class="at">-n</span> kong-vm <span class="at">--no-wait</span> <span class="kw">&amp;&amp;</span> <span class="ex">az</span> vm start <span class="at">-g</span> co3404-rg <span class="at">-n</span> submit-vm <span class="at">--no-wait</span></span>
+<span id="cb13-66"><a href="#cb13-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-67"><a href="#cb13-67" aria-hidden="true" tabindex="-1"></a><span class="co"># === STOP ALL VMS (after recording) ===</span></span>
+<span id="cb13-68"><a href="#cb13-68" aria-hidden="true" tabindex="-1"></a><span class="ex">az</span> vm deallocate <span class="at">-g</span> co3404-rg <span class="at">-n</span> joke-vm <span class="at">--no-wait</span> <span class="kw">&amp;&amp;</span> <span class="ex">az</span> vm deallocate <span class="at">-g</span> co3404-rg <span class="at">-n</span> kong-vm <span class="at">--no-wait</span> <span class="kw">&amp;&amp;</span> <span class="ex">az</span> vm deallocate <span class="at">-g</span> co3404-rg <span class="at">-n</span> submit-vm <span class="at">--no-wait</span></span>
+<span id="cb13-69"><a href="#cb13-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-70"><a href="#cb13-70" aria-hidden="true" tabindex="-1"></a><span class="co"># === REDEPLOY (if needed before recording) ===</span></span>
+<span id="cb13-71"><a href="#cb13-71" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /Users/asifibrahim/Desktop/Distributed_system/co3404-option2 <span class="kw">&amp;&amp;</span> <span class="fu">bash</span> deploy.sh</span></code></pre></div>
+<hr />
+<h2 id="architecture-reference">ARCHITECTURE REFERENCE</h2>
+<h3 id="vms-and-private-ips">VMs and Private IPs</h3>
+<table>
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 22%" />
+<col style="width: 22%" />
+<col style="width: 25%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>VM</th>
+<th>Azure Name</th>
+<th>Public IP</th>
+<th>Private IP</th>
+<th>Services</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>VM1</td>
+<td>joke-vm</td>
+<td>20.100.187.137</td>
+<td>10.0.0.4</td>
+<td>joke-app (4000), etl-app (4001), MongoDB (4002)</td>
+</tr>
+<tr class="even">
+<td>VM2</td>
+<td>submit-vm</td>
+<td>51.120.78.45</td>
+<td>10.0.0.5</td>
+<td>submit-app (4200), moderate-app (4100), RabbitMQ (5672/15672)</td>
+</tr>
+<tr class="odd">
+<td>VM3</td>
+<td>kong-vm</td>
+<td>20.100.192.182</td>
+<td>10.0.0.6</td>
+<td>Kong Gateway (80→8000, 443→8443)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="kong-routes">Kong Routes</h3>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 31%" />
+<col style="width: 31%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Path</th>
+<th>Service</th>
+<th>Backend</th>
+<th style="text-align: center;">Rate Limited</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>/joke</td>
+<td>joke-service</td>
+<td>10.0.0.4:4000</td>
+<td style="text-align: center;">Yes (5/min)</td>
+</tr>
+<tr class="even">
+<td>/joke-app, /joke-types</td>
+<td>joke-app-ui-service</td>
+<td>10.0.0.4:4000</td>
+<td style="text-align: center;">No</td>
+</tr>
+<tr class="odd">
+<td>/submit, /submit-types, /docs, /submit-app</td>
+<td>submit-service</td>
+<td>10.0.0.5:4200</td>
+<td style="text-align: center;">No</td>
+</tr>
+<tr class="even">
+<td>/moderate, /moderated, /moderate-types, /moderate-app, /auth-status, /login, /logout, /callback, /</td>
+<td>moderate-service</td>
+<td>10.0.0.5:4100</td>
+<td style="text-align: center;">No</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rabbitmq-queues-exchange">RabbitMQ Queues &amp; Exchange</h3>
+<table>
+<colgroup>
+<col style="width: 28%" />
+<col style="width: 28%" />
+<col style="width: 42%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>SUBMITTED_JOKES</td>
+<td>Queue (durable)</td>
+<td>Submit app publishes here, Moderate app pulls from here</td>
+</tr>
+<tr class="even">
+<td>MODERATED_JOKES</td>
+<td>Queue (durable)</td>
+<td>Moderate app publishes approved jokes, ETL consumes</td>
+</tr>
+<tr class="odd">
+<td>type_update</td>
+<td>Fanout Exchange (durable)</td>
+<td>ETL publishes type events, Submit + Moderate subscribe</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-files">Key Files</h3>
+<table>
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>co3404-option1/docker-compose.yml</td>
+<td>Option 1: single-host setup with MySQL</td>
+</tr>
+<tr class="even">
+<td>co3404-option2/joke-microservice/joke-app/server.js</td>
+<td>Joke API: GET /types, GET /joke/:type</td>
+</tr>
+<tr class="odd">
+<td>co3404-option2/joke-microservice/joke-app/db/index.js</td>
+<td>DB adapter factory (MySQL or MongoDB)</td>
+</tr>
+<tr class="even">
+<td>co3404-option2/joke-microservice/etl/etl.js</td>
+<td>ETL: consumes MODERATED_JOKES, writes to DB, publishes type events</td>
+</tr>
+<tr class="odd">
+<td>co3404-option2/submit-microservice/submit-app/server.js</td>
+<td>Submit API: POST /submit, types cache, fanout subscriber</td>
+</tr>
+<tr class="even">
+<td>co3404-option2/moderate-microservice/server.js</td>
+<td>Moderate API: GET /moderate (pull), POST /moderated (approve/reject), Auth0 OIDC</td>
+</tr>
+<tr class="odd">
+<td>co3404-option2/kong-gateway/kong.yaml</td>
+<td>Kong declarative config: routes, rate limiting</td>
+</tr>
+<tr class="even">
+<td>co3404-option2/kong-gateway/terraform/main.tf</td>
+<td>Terraform IaC: all VMs, NICs, NSGs, provisioners</td>
+</tr>
+<tr class="odd">
+<td>co3404-option2/deploy.sh</td>
+<td>Redeployment script: SCP + docker compose up</td>
+</tr>
+</tbody>
+</table>

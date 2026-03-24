@@ -1,29 +1,27 @@
 version: '3.8'
 
 services:
-  # Submit app - publishes jokes to RabbitMQ (VM5), fetches types from cache
-
+  # Submit app - publishes jokes to RabbitMQ, fetches types from cache
   submit:
     build: ./submit-app
     container_name: submit-app
     ports:
       - "4200:3200"
     environment:
-      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_IP}:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
       JOKE_SERVICE_URL: http://${VM1_PRIVATE_IP}:4000
+      KONG_IP: ${KONG_IP:-localhost}
     volumes:
       # Persistent cache for types so /types works even if joke service is down
       - types-cache:/data
-
     networks:
-      - submit-network
+      - shared-network
     restart: unless-stopped
 
 # Named volumes for persistence
 volumes:
   types-cache:
 
-    # Private bridge network for container-to-container communication
 networks:
-  submit-network:
-    driver: bridge
+  shared-network:
+    external: true

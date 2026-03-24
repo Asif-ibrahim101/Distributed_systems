@@ -11,7 +11,14 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     volumes:
       - rmq-data:/var/lib/rabbitmq
+    networks:
+      - shared-network
     restart: unless-stopped
 
 volumes:
   rmq-data:
+
+networks:
+  shared-network:
+    name: shared-network
+    driver: bridge

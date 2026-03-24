@@ -30,7 +30,6 @@ services:
   mongodb:
     image: mongo:7.0
     container_name: joke-database-mongo
-    profiles: [ "mongo" ]
     environment:
       MONGO_INITDB_DATABASE: ${DB_NAME}
     ports:
@@ -45,6 +44,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   # Joke retrieval app — serves random jokes (UNCHANGED from Option 1)
   joke:

@@ -11,8 +11,12 @@ const options = {
         },
         servers: [
             {
+                url: `http://${process.env.KONG_IP || 'localhost'}`,
+                description: 'Kong API Gateway',
+            },
+            {
                 url: 'http://localhost:4200',
-                description: 'Docker-mapped port',
+                description: 'Docker-mapped port (direct)',
             },
         ],
     },

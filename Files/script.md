@@ -8,19 +8,19 @@
 ### Terminal — pre-set variables:
 ```bash
 SSH_OPTS="-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa"
-VM1="azureuser@20.100.185.233"
-VM2="azureuser@20.100.186.237"
-VM3="azureuser@20.100.186.201"
-KONG_IP="20.100.186.201"
+VM1="azureuser@20.100.187.137"
+VM2="azureuser@51.120.78.45"
+VM3="azureuser@20.100.192.182"
+KONG_IP="20.100.192.182"
 ```
 
 ### Browser tabs open (all through Kong — single entry point):
 1. Azure Portal — co3404-rg resource group
-2. Joke App UI — `http://20.100.186.201/joke-app/`
-3. Submit App UI — `http://20.100.186.201/submit-app/`
-4. Swagger Docs — `http://20.100.186.201/docs`
-5. Moderate App UI — `http://20.100.186.201/`
-6. RabbitMQ Console — `http://20.100.186.237:15672`
+2. Joke App UI — `http://20.100.192.182/joke-app/`
+3. Submit App UI — `http://20.100.192.182/submit-app/`
+4. Swagger Docs — `http://20.100.192.182/docs`
+5. Moderate App UI — `http://20.100.192.182/moderate-app`
+6. RabbitMQ Console — `http://51.120.78.45:15672`
 
 ### SSH sessions ready in separate terminal tabs:
 - Tab for VM1, Tab for VM2, Tab for VM3
@@ -141,7 +141,7 @@ The fundamental change is that the **submit app no longer writes to the database
 
 "The joke has been published to the RabbitMQ queue."
 
-**[Switch to browser: RabbitMQ Console at http://20.100.186.237:15672]**
+**[Switch to browser: RabbitMQ Console at http://51.120.78.45:15672]**
 
 "Here in the RabbitMQ management console, you can see the queues. The message is waiting to be consumed.
 
@@ -264,7 +264,7 @@ The moderate service uses two separate RabbitMQ channels — one for consuming f
 
 **OPEN: `co3404-option2/moderate-microservice/public/script.js`** — briefly show the approve/reject fetch calls and the polling logic
 
-**[Switch to Moderate UI at http://KONG_IP/ — show a joke waiting]**
+**[Switch to Moderate UI at http://KONG_IP/moderate-app — show a joke waiting]**
 
 "Here's a joke waiting for review. The fields are editable. I can change the type from the dropdown or keep the submitted one. Approve sends it to the moderated queue with persistent delivery. Reject simply acknowledges and discards it."
 
@@ -406,10 +406,10 @@ The system is fully operational on Azure, resilient to failure, and every functi
 ```bash
 # === VARIABLES ===
 SSH_OPTS="-o StrictHostKeyChecking=no -i ~/.ssh/id_rsa"
-VM1="azureuser@20.100.185.233"
-VM2="azureuser@20.100.186.237"
-VM3="azureuser@20.100.186.201"
-KONG_IP="20.100.186.201"
+VM1="azureuser@20.100.187.137"
+VM2="azureuser@51.120.78.45"
+VM3="azureuser@20.100.192.182"
+KONG_IP="20.100.192.182"
 
 # === SHOW ALL CONTAINERS ===
 ssh $SSH_OPTS $VM1 "sudo docker ps --format 'table {{.Names}}\t{{.Status}}'"
@@ -484,9 +484,9 @@ cd /Users/asifibrahim/Desktop/Distributed_system/co3404-option2 && bash deploy.s
 ### VMs and Private IPs
 | VM | Azure Name | Public IP | Private IP | Services |
 |----|-----------|-----------|------------|----------|
-| VM1 | joke-vm | 20.100.185.233 | 10.0.0.4 | joke-app (4000), etl-app (4001), MongoDB (4002) |
-| VM2 | submit-vm | 20.100.186.237 | 10.0.0.5 | submit-app (4200), moderate-app (4100), RabbitMQ (5672/15672) |
-| VM3 | kong-vm | 20.100.186.201 | 10.0.0.6 | Kong Gateway (80→8000, 443→8443) |
+| VM1 | joke-vm | 20.100.187.137 | 10.0.0.4 | joke-app (4000), etl-app (4001), MongoDB (4002) |
+| VM2 | submit-vm | 51.120.78.45 | 10.0.0.5 | submit-app (4200), moderate-app (4100), RabbitMQ (5672/15672) |
+| VM3 | kong-vm | 20.100.192.182 | 10.0.0.6 | Kong Gateway (80→8000, 443→8443) |
 
 ### Kong Routes
 | Path | Service | Backend | Rate Limited |
@@ -494,7 +494,7 @@ cd /Users/asifibrahim/Desktop/Distributed_system/co3404-option2 && bash deploy.s
 | /joke | joke-service | 10.0.0.4:4000 | Yes (5/min) |
 | /joke-app, /joke-types | joke-app-ui-service | 10.0.0.4:4000 | No |
 | /submit, /submit-types, /docs, /submit-app | submit-service | 10.0.0.5:4200 | No |
-| /moderate, /moderated, /moderate-types, /auth-status, /login, /logout, /callback, / | moderate-service | 10.0.0.5:4100 | No |
+| /moderate, /moderated, /moderate-types, /moderate-app, /auth-status, /login, /logout, /callback, / | moderate-service | 10.0.0.5:4100 | No |
 
 ### RabbitMQ Queues & Exchange
 | Name | Type | Purpose |
