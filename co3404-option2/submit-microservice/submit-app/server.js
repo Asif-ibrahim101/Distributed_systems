@@ -144,7 +144,7 @@ function readCache() {
  */
 app.get('/types', (req, res) => {
     try {
-        const types = readCache();
+        const types = [...new Set(readCache())];
         res.json(types);
     } catch (err) {
         console.error('Error reading types cache:', err.message);
@@ -176,7 +176,7 @@ app.get('/types', (req, res) => {
  */
 app.get('/submit-types', (req, res) => {
     try {
-        const types = readCache();
+        const types = [...new Set(readCache())];
         res.json(types);
     } catch (err) {
         console.error('Error reading types cache:', err.message);

@@ -172,7 +172,7 @@ This ensured the dropdown always worked, even during outages."
 
 **[Paste in terminal:]**
 ```bash
-ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mongo down"
+ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mysql down"
 ```
 
 "VM1 is completely down. But the Submit app still works."
@@ -187,7 +187,7 @@ ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mongo 
 
 **[Paste:]**
 ```bash
-ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mongo up -d"
+ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mysql up -d"
 ```
 
 **[Wait a few seconds, check ETL logs:]**
@@ -312,12 +312,47 @@ ssh $SSH_OPTS $VM1 "sudo docker logs etl-app --tail 5"
 
 The code uses a factory pattern in db/index.js — it checks DB_TYPE and returns either the MySQL or MongoDB adapter. Both adapters expose the same query interface so the rest of the application code doesn't change at all."
 
-**[Show MongoDB data:]**
+"Currently running MySQL. Let me prove it works, then switch to MongoDB live."
+
+**[Show MySQL data:]**
 ```bash
-ssh $SSH_OPTS $VM1 "sudo docker exec joke-database-mongo mongosh jokedb --eval 'db.types.find().toArray()'"
+ssh $SSH_OPTS $VM1 "sudo docker exec joke-database mysql -ujokeuser -pjokepassword jokedb -e 'SELECT * FROM jokes LIMIT 3;'"
 ```
 
-"Currently running MongoDB. Switching is a one-line env change plus swapping the Docker Compose profile — the application code doesn't change."
+**[Fetch a joke to prove it works:]**
+```bash
+curl -sk "https://$KONG_IP/joke/general" | python3 -m json.tool
+```
+
+**⏸️ PAUSE RECORDING (wait for rebuild ~30s)**
+
+**[Switch to MongoDB:]**
+```bash
+ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mysql down && sed -i 's/DB_TYPE=mysql/DB_TYPE=mongo/' .env && sed -i 's/DB_HOST=database/DB_HOST=mongodb/' .env && sudo docker compose --profile mongo up -d"
+```
+
+**⏸️ PAUSE RECORDING (wait for MongoDB to become healthy ~15s)**
+
+**▶️ RESUME RECORDING**
+
+**[Show MongoDB data:]**
+```bash
+ssh $SSH_OPTS $VM1 "sudo docker exec joke-database-mongo mongosh jokedb --eval 'db.jokes.find().limit(3).toArray()'"
+```
+
+**[Fetch a joke to prove MongoDB works too:]**
+```bash
+curl -sk "https://$KONG_IP/joke/general" | python3 -m json.tool
+```
+
+"Same API, same response format, different database engine. The application code didn't change — only the environment variable and Docker profile."
+
+**[Switch back to MySQL for the rest of the demo:]**
+```bash
+ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mongo down && sed -i 's/DB_TYPE=mongo/DB_TYPE=mysql/' .env && sed -i 's/DB_HOST=mongodb/DB_HOST=database/' .env && sudo docker compose --profile mysql up -d"
+```
+
+**⏸️ PAUSE RECORDING (wait for MySQL to become healthy ~15s)**
 
 ### 4d: OIDC Authentication (30 seconds)
 
@@ -429,10 +464,10 @@ curl -s -X POST http://$KONG_IP/submit \
 ssh $SSH_OPTS $VM1 "sudo docker logs etl-app --tail 10"
 
 # === OPTION 2: RESILIENCE — STOP VM1 ===
-ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mongo down"
+ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mysql down"
 
 # === OPTION 2: RESILIENCE — START VM1 ===
-ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mongo up -d"
+ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mysql up -d"
 
 # === OPTION 3: SHOW KONG CONFIG ===
 # Open in VS Code: co3404-option2/kong-gateway/kong.yaml
@@ -453,8 +488,17 @@ curl -s -X POST http://$KONG_IP/submit \
 # === OPTION 4b: CHECK ETL LOGS FOR TYPE EVENT ===
 ssh $SSH_OPTS $VM1 "sudo docker logs etl-app --tail 5"
 
+# === OPTION 4c: SHOW MYSQL DATA ===
+ssh $SSH_OPTS $VM1 "sudo docker exec joke-database mysql -ujokeuser -pjokepassword jokedb -e 'SELECT * FROM jokes LIMIT 3;'"
+
+# === OPTION 4c: SWITCH TO MONGODB ===
+ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mysql down && sed -i 's/DB_TYPE=mysql/DB_TYPE=mongo/' .env && sed -i 's/DB_HOST=database/DB_HOST=mongodb/' .env && sudo docker compose --profile mongo up -d"
+
 # === OPTION 4c: SHOW MONGODB DATA ===
-ssh $SSH_OPTS $VM1 "sudo docker exec joke-database-mongo mongosh jokedb --eval 'db.types.find().toArray()'"
+ssh $SSH_OPTS $VM1 "sudo docker exec joke-database-mongo mongosh jokedb --eval 'db.jokes.find().limit(3).toArray()'"
+
+# === OPTION 4c: SWITCH BACK TO MYSQL ===
+ssh $SSH_OPTS $VM1 "cd joke-microservice && sudo docker compose --profile mongo down && sed -i 's/DB_TYPE=mongo/DB_TYPE=mysql/' .env && sed -i 's/DB_HOST=mongodb/DB_HOST=database/' .env && sudo docker compose --profile mysql up -d"
 
 # === OPTION 4d: TEST AUTH PROTECTION ===
 curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" -X POST http://$KONG_IP/moderated
