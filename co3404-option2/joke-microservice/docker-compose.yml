@@ -30,6 +30,7 @@ services:
   mongodb:
     image: mongo:7.0
     container_name: joke-database-mongo
+    profiles: [ "mongo" ]
     environment:
       MONGO_INITDB_DATABASE: ${DB_NAME}
     ports:
