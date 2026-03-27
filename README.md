@@ -4,7 +4,76 @@ A distributed joke service built with Node.js, Express, MongoDB, Docker, RabbitM
 
 ## Quick Start (Run Locally)
 
-**Prerequisites:** Docker and Docker Compose installed.
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed (includes Docker Compose).
+
+> **Note:** All `.env` files with the defaults below are already included in the repository. No manual setup is needed — just clone and run.
+
+### Environment Defaults
+
+<details>
+<summary><strong>Option 1 — <code>co3404-option1/.env</code></strong></summary>
+
+```env
+DB_ROOT_PASSWORD=rootpassword
+DB_NAME=jokedb
+DB_USER=jokeuser
+DB_PASSWORD=jokepassword
+```
+</details>
+
+<details>
+<summary><strong>Option 2 — <code>co3404-option2/rabbitmq/.env</code></strong></summary>
+
+```env
+RABBITMQ_USER=guest
+RABBITMQ_PASS=guest
+```
+</details>
+
+<details>
+<summary><strong>Option 2 — <code>co3404-option2/joke-microservice/.env</code></strong></summary>
+
+```env
+DB_TYPE=mongo
+DB_HOST=mongodb
+DB_ROOT_PASSWORD=rootpassword
+DB_NAME=jokedb
+DB_USER=jokeuser
+DB_PASSWORD=jokepassword
+RABBITMQ_USER=guest
+RABBITMQ_PASS=guest
+RABBITMQ_IP=10.0.0.5
+```
+</details>
+
+<details>
+<summary><strong>Option 2 — <code>co3404-option2/submit-microservice/.env</code></strong></summary>
+
+```env
+RABBITMQ_USER=guest
+RABBITMQ_PASS=guest
+VM1_PRIVATE_IP=localhost
+RABBITMQ_IP=host.docker.internal
+KONG_IP=20.100.192.182
+```
+</details>
+
+<details>
+<summary><strong>Option 2 — <code>co3404-option2/moderate-microservice/.env</code></strong></summary>
+
+```env
+RABBITMQ_USER=guest
+RABBITMQ_PASS=guest
+RABBITMQ_IP=host.docker.internal
+AUTH_SECRET=ksgxREWCQ0SpqnG4UCIuwgcSc7AjyZm-89VQxkSeb7tNVcVhbNouy1f4HYSKRkuB
+AUTH_CLIENT_ID=DZBfLq3XkBBDxQlmpgr1zUx6vv4nn3LY
+AUTH_CLIENT_SECRET=-lx44zIzzA5EmTgPzm4o_AHj5oVyq3sVSAdUFstRyAq5HTCRYDS2rJ9H9PadljEY
+AUTH_ISSUER_URL=https://dev-g3u2rv41onxqq8jl.us.auth0.com
+BASE_URL=http://localhost:4100
+```
+</details>
+
+---
 
 Run these commands **in order** from the project root:
 

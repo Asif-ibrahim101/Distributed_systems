@@ -28,6 +28,12 @@ const authConfig = {
     clientID: process.env.AUTH_CLIENT_ID,
     clientSecret: process.env.AUTH_CLIENT_SECRET,
     issuerBaseURL: process.env.AUTH_ISSUER_URL,
+    session: {
+        cookie: {
+            sameSite: 'Lax',
+            secure: false,
+        }
+    },
 };
 
 app.use(auth(authConfig));

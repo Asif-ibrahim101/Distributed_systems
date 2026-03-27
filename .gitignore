@@ -1,8 +1,8 @@
 # Dependencies
 node_modules/
 
-# Environment files (contain credentials)
-.env
+# Environment files — .env files are tracked for this coursework project
+# so the tutor can clone and run without manual setup
 
 # OS files
 .DS_Store
